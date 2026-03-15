@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Next In Faith — Entérate primero</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <link href="//cdn-images.mailchimp.com/embedcode/classic-061523.css" rel="stylesheet" type="text/css" />
+  <style>
+    :root {
+      --sky:       #5bb8f5;
+      --sky-light: #a8d8f8;
+      --sky-pale:  #dff0fb;
+      --gold:      #e8a020;
+      --gold-warm: #f5c060;
+      --teal:      #1a9b8c;
+      --text-dark: #1a2b3c;
+      --text-mid:  #4a6278;
+      --text-soft: #7a96aa;
+      --white:     #ffffff;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      font-weight: 400;
+      background: var(--white);
+      color: var(--text-dark);
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* ── BACKGROUND ── */
+    .page-wrap {
+      background: linear-gradient(170deg,
+        #c8e8fa 0%,
+        #dff0fb 25%,
+        #eef7fd 50%,
+        #f7fbff 70%,
+        #ffffff 100%);
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* Decorative circles */
+    .page-wrap::before {
+      content: '';
+      position: fixed;
+      top: -120px; right: -120px;
+      width: 420px; height: 420px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(91,184,245,0.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .page-wrap::after {
+      content: '';
+      position: fixed;
+      bottom: -100px; left: -100px;
+      width: 360px; height: 360px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(232,160,32,0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* ── HEADER ── */
+    header {
+      text-align: center;
+      padding: 36px 24px 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo-img {
+      width: 140px;
+      opacity: 0;
+      animation: popIn 0.7s cubic-bezier(0.34,1.56,0.64,1) forwards 0.1s;
+      filter: drop-shadow(0 4px 12px rgba(91,184,245,0.3));
+    }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 32px 24px 40px;
+      position: relative;
+      z-index: 1;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(91,184,245,0.2);
+      border: 1px solid rgba(91,184,245,0.4);
+      border-radius: 100px;
+      padding: 6px 18px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #2980b9;
+      margin-bottom: 24px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards 0.3s;
+    }
+
+    .badge-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--sky);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.4); opacity: 0.6; }
+    }
+
+    .hero-headline {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.2rem, 6vw, 3.6rem);
+      font-weight: 700;
+      line-height: 1.15;
+      color: var(--text-dark);
+      margin-bottom: 20px;
+      opacity: 0;
+      animation: fadeUp 0.7s ease forwards 0.45s;
+    }
+
+    .hero-headline .accent {
+      color: var(--sky);
+      font-style: italic;
+    }
+
+    .hero-headline .gold {
+      color: var(--gold);
+    }
+
+    .hero-sub {
+      font-size: 16px;
+      line-height: 1.75;
+      color: var(--text-mid);
+      margin-bottom: 32px;
+      opacity: 0;
+      animation: fadeUp 0.7s ease forwards 0.6s;
+    }
+
+    /* ── PROOF PILLS ── */
+    .proof-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 40px;
+      opacity: 0;
+      animation: fadeUp 0.7s ease forwards 0.75s;
+    }
+
+    .proof-pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: white;
+      border-radius: 100px;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-mid);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    .proof-pill .icon { font-size: 15px; }
+
+    .arrow-down {
+      font-size: 22px;
+      color: var(--sky);
+      animation: bounce 1.8s ease-in-out infinite;
+      opacity: 0;
+      animation: bounce 1.8s ease-in-out infinite, fadeIn 0.5s ease forwards 1.1s;
+      display: block;
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(6px); }
+    }
+
+    /* ── FORM CARD ── */
+    .form-card {
+      background: white;
+      border-radius: 24px;
+      box-shadow:
+        0 4px 6px rgba(0,0,0,0.04),
+        0 12px 40px rgba(91,184,245,0.15),
+        0 0 0 1px rgba(91,184,245,0.12);
+      padding: 40px 36px;
+      max-width: 480px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 2;
+      opacity: 0;
+      animation: fadeUp 0.8s ease forwards 0.9s;
+    }
+
+    .form-card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      text-align: center;
+      margin-bottom: 6px;
+    }
+
+    .form-card-sub {
+      font-size: 13px;
+      color: var(--text-soft);
+      text-align: center;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    /* ── MAILCHIMP OVERRIDES ── */
+    #mc_embed_signup { background: transparent !important; width: 100% !important; }
+    #mc_embed_signup h2 { display: none !important; }
+    #mc_embed_signup .indicates-required { display: none !important; }
+
+    #mc_embed_signup .mc-field-group {
+      width: 100% !important;
+      padding-bottom: 0 !important;
+      margin-bottom: 14px !important;
+    }
+
+    #mc_embed_signup .mc-field-group label {
+      font-family: 'Nunito', sans-serif !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      letter-spacing: 1.5px !important;
+      text-transform: uppercase !important;
+      color: var(--text-soft) !important;
+      margin-bottom: 6px !important;
+      display: block !important;
+    }
+
+    #mc_embed_signup .mc-field-group input {
+      width: 100% !important;
+      background: #f4f8fc !important;
+      border: 1.5px solid #d0e8f5 !important;
+      border-radius: 10px !important;
+      color: var(--text-dark) !important;
+      font-family: 'Nunito', sans-serif !important;
+      font-size: 15px !important;
+      font-weight: 400 !important;
+      padding: 13px 16px !important;
+      transition: border-color 0.2s, background 0.2s !important;
+      outline: none !important;
+    }
+
+    #mc_embed_signup .mc-field-group input:focus {
+      border-color: var(--sky) !important;
+      background: white !important;
+      box-shadow: 0 0 0 3px rgba(91,184,245,0.15) !important;
+    }
+
+    #mc_embed_signup .mc-field-group input::placeholder {
+      color: #b0c8d8 !important;
+    }
+
+    /* Two column layout for nombre/apellidos */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    #mc-embedded-subscribe {
+      width: 100% !important;
+      background: linear-gradient(135deg, var(--sky), #3aa0e8) !important;
+      color: white !important;
+      font-family: 'Nunito', sans-serif !important;
+      font-size: 15px !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.5px !important;
+      border: none !important;
+      border-radius: 12px !important;
+      padding: 16px !important;
+      cursor: pointer !important;
+      margin-top: 8px !important;
+      transition: transform 0.2s, box-shadow 0.2s !important;
+      box-shadow: 0 4px 16px rgba(91,184,245,0.4) !important;
+    }
+
+    #mc-embedded-subscribe:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 8px 24px rgba(91,184,245,0.5) !important;
+    }
+
+    .refferal_badge { display: none !important; }
+    #mc_embed_signup .foot p { display: none !important; }
+    #mce-responses { width: 100% !important; }
+
+    #mce-success-response {
+      color: var(--teal) !important;
+      font-size: 14px !important;
+      font-weight: 600 !important;
+      padding: 14px !important;
+      background: rgba(26,155,140,0.08) !important;
+      border-radius: 10px !important;
+      margin-top: 12px !important;
+      text-align: center !important;
+    }
+
+    #mce-error-response {
+      color: #e05555 !important;
+      font-size: 13px !important;
+      padding: 12px !important;
+      background: rgba(224,85,85,0.08) !important;
+      border-radius: 10px !important;
+      margin-top: 12px !important;
+    }
+
+    .privacy-note {
+      font-size: 11px;
+      color: var(--text-soft);
+      text-align: center;
+      margin-top: 16px;
+      line-height: 1.6;
+    }
+
+    .privacy-note a {
+      color: var(--sky);
+      text-decoration: none;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 40px 24px 32px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .footer-logo-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      color: var(--text-soft);
+      margin-bottom: 12px;
+      font-style: italic;
+    }
+
+    .footer-copy {
+      font-size: 11px;
+      color: #b0c4d4;
+      line-height: 1.8;
+    }
+
+    .footer-copy a {
+      color: var(--sky);
+      text-decoration: none;
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.8); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 520px) {
+      .form-card { padding: 28px 20px; border-radius: 18px; }
+      .two-col { grid-template-columns: 1fr; }
+      .proof-row { gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- HEADER -->
+  <header>
+    <img src="logo_fondo_blanco.png" alt="Next In Faith" class="logo-img" />
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      Acceso anticipado abierto
+    </div>
+
+    <h1 class="hero-headline">
+      Los mejores eventos<br>
+      se agotan en <span class="accent">minutos.</span><br>
+      Tú llegas <span class="gold">primero.</span>
+    </h1>
+
+    <p class="hero-sub">
+      Retiros, conciertos de alabanza, conferencias —<br>
+      te avisamos antes que nadie. Sin buscar. Sin perderte nada.
+    </p>
+
+    <div class="proof-row">
+      <div class="proof-pill"><span class="icon">⚡</span> Raise Up — sold out en 10 min</div>
+      <div class="proof-pill"><span class="icon">🙏</span> Retiros YP — cupo limitado</div>
+      <div class="proof-pill"><span class="icon">🎶</span> Martín Valverde — agotado</div>
+    </div>
+
+    <span class="arrow-down">↓</span>
+
+    <!-- FORM CARD -->
+    <div class="form-card">
+      <p class="form-card-title">Regístrate gratis</p>
+      <p class="form-card-sub">Recibe los eventos antes que el resto.<br>Solo lo que importa, cuando importa.</p>
+
+      <div id="mc_embed_shell">
+        <div id="mc_embed_signup">
+          <form action="https://gmail.us1.list-manage.com/subscribe/post?u=5a9e1b468fb4372ebd7d765d2&amp;id=f3623a4edf&amp;f_id=00ae80e5f0"
+                method="post" id="mc-embedded-subscribe-form"
+                name="mc-embedded-subscribe-form" class="validate" target="_blank">
+            <div id="mc_embed_signup_scroll">
+
+              <div class="two-col">
+                <div class="mc-field-group">
+                  <label for="mce-FNAME">Nombre</label>
+                  <input type="text" name="FNAME" class="required text" id="mce-FNAME" required placeholder="María" />
+                </div>
+                <div class="mc-field-group">
+                  <label for="mce-LNAME">Apellidos</label>
+                  <input type="text" name="LNAME" class="required text" id="mce-LNAME" required placeholder="García" />
+                </div>
+              </div>
+
+              <div class="mc-field-group">
+                <label for="mce-EMAIL">Correo electrónico</label>
+                <input type="email" name="EMAIL" class="required email" id="mce-EMAIL" required placeholder="tu@correo.com" />
+              </div>
+
+              <div class="two-col">
+                <div class="mc-field-group">
+                  <label for="mce-CELULAR">Celular</label>
+                  <input type="text" name="CELULAR" id="mce-CELULAR" placeholder="+52 999 000 0000" />
+                </div>
+                <div class="mc-field-group">
+                  <label for="mce-EDAD">Edad</label>
+                  <input type="number" name="EDAD" class="required number" id="mce-EDAD" required placeholder="25" min="15" max="99" />
+                </div>
+              </div>
+
+              <div id="mce-responses" class="clear foot">
+                <div class="response" id="mce-error-response" style="display:none;"></div>
+                <div class="response" id="mce-success-response" style="display:none;"></div>
+              </div>
+
+              <div style="position:absolute;left:-5000px;" aria-hidden="true">
+                <input type="text" name="b_5a9e1b468fb4372ebd7d765d2_f3623a4edf" tabindex="-1" value="" />
+              </div>
+
+              <div class="optionalParent">
+                <div class="clear foot">
+                  <input type="submit" name="subscribe" id="mc-embedded-subscribe"
+                         class="button" value="¡Quiero enterarme primero! →" />
+                </div>
+              </div>
+
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <p class="privacy-note">
+        Sin spam. Solo eventos católicos que importan.<br>
+        Puedes darte de baja cuando quieras —
+        <a href="#" onclick="alert('Usa el enlace de baja en cualquier correo que recibas, o escríbenos directamente.'); return false;">así de fácil</a>.
+      </p>
+    </div>
+
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p class="footer-logo-text">Next In Faith · Donde la fe cobra vida</p>
+    <p class="footer-copy">
+      © 2026 Next In Faith · Mérida, México<br>
+      Al registrarte aceptas recibir información de eventos católicos.<br>
+      <a href="#" onclick="alert('Tus datos se usan exclusivamente para enviarte información de eventos católicos en México. No los compartimos con terceros. Puedes darte de baja en cualquier momento.'); return false;">Aviso de privacidad</a>
+    </p>
+  </footer>
+
+</div>
+
+<script type="text/javascript" src="//s3.amazonaws.com/downloads.mailchimp.com/js/mc-validate.js"></script>
+<script type="text/javascript">
+  (function($) {
+    window.fnames = new Array();
+    window.ftypes = new Array();
+    fnames[0]='EMAIL';  ftypes[0]='email';
+    fnames[1]='FNAME';  ftypes[1]='text';
+    fnames[2]='LNAME';  ftypes[2]='text';
+    fnames[7]='EDAD';   ftypes[7]='number';
+    fnames[8]='CELULAR';ftypes[8]='text';
+  }(jQuery));
+  var $mcj = jQuery.noConflict(true);
+</script>
+</body>
+</html>
