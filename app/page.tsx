@@ -1,6 +1,23 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 
 export default function Home() {
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const carruselRef = useRef<HTMLDivElement>(null);
+
+useEffect(() => {
+  const el = carruselRef.current;
+  if (!el) return;
+  const interval = setInterval(() => {
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth) {
+      el.scrollLeft = 0;
+    } else {
+      el.scrollLeft += 240;
+    }
+  }, 2500);
+  return () => clearInterval(interval);
+}, []);
   const categorias = [
     { name: "Retiros", color: "#1a3a6b", light: "#dff0fb" },
     { name: "Conciertos", color: "#1a9b8c", light: "#d0f0ec" },
@@ -33,6 +50,25 @@ export default function Home() {
             <a href="#" className="border border-[#4aa8d8] text-[#4aa8d8] px-4 py-2 rounded-full hover:bg-[#4aa8d8] hover:text-white transition-all">Sign In</a>
             <a href="#" className="bg-[#e8a020] text-white px-4 py-2 rounded-full hover:bg-[#f5c060] transition-all">Sign Up</a>
           </div>
+          {/* Botón hamburguesa */}
+          <button
+             className="md:hidden text-white text-2xl"
+             onClick={() => setMenuAbierto(!menuAbierto)}
+             >
+             {menuAbierto ? "✕" : "☰"}
+          </button>
+
+          {/* Menú móvil */}
+          {menuAbierto && (
+            <div className="absolute top-full left-0 w-full flex flex-col gap-4 px-6 py-6 md:hidden"
+                style={{background: "linear-gradient(180deg, #1a3a6b 0%, #1a6b8c 100%)"}}>
+              <a href="#" className="text-white font-semibold">Acerca de</a>
+              <a href="#" className="text-white font-semibold">Contáctanos</a>
+              <a href="/portal" className="text-white font-semibold">Portal</a>
+              <a href="#" className="text-white font-semibold">Sign In</a>
+              <a href="#" className="bg-[#e8a020] text-white px-4 py-2 rounded-full text-center font-semibold">Sign Up</a>
+            </div>
+           )}
         </div>
       </nav>
 
@@ -72,7 +108,7 @@ export default function Home() {
           </p>
 
           {/* CARRUSEL */}
-          <div className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
+          <div ref={carruselRef} className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide scroll-smooth">
             {categorias.map((cat) => (
               <div
                 key={cat.name}
