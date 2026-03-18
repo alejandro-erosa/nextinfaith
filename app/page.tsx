@@ -1,65 +1,102 @@
 import Image from "next/image";
 
 export default function Home() {
+  const categorias = [
+    { name: "Retiros", color: "#1a3a6b", light: "#dff0fb" },
+    { name: "Conciertos", color: "#1a9b8c", light: "#d0f0ec" },
+    { name: "Conferencias", color: "#4aa8d8", light: "#dff0fb" },
+    { name: "Peregrinaciones", color: "#e8a020", light: "#fdf3dc" },
+    { name: "Juveniles", color: "#1a3a6b", light: "#dff0fb" },
+    { name: "Masivos", color: "#1a9b8c", light: "#d0f0ec" },
+  ];
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
+    <main className="min-h-screen bg-white">
+
+      {/* NAVBAR */}
+      <nav className="fixed top-0 w-full z-50 backdrop-blur-sm shadow-sm"
+          style={{background: "linear-gradient(90deg, #1a3a6b 0%, #1a6b8c 100%)"}}>
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo_transparente.png"
+              alt="Next In Faith"
+              width={70}
+              height={70}
+            />
+            <span className="font-bold text-lg text-white">Next In Faith</span>
+          </div>
+          <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-white">
+            <a href="#" className="hover:text-[#4aa8d8] transition-colors">Acerca de</a>
+            <a href="#" className="hover:text-[#4aa8d8] transition-colors">Contáctanos</a>
+            <a href="/portal" className="hover:text-white transition-colors">Portal</a> 
+            <a href="#" className="border border-[#4aa8d8] text-[#4aa8d8] px-4 py-2 rounded-full hover:bg-[#4aa8d8] hover:text-white transition-all">Sign In</a>
+            <a href="#" className="bg-[#e8a020] text-white px-4 py-2 rounded-full hover:bg-[#f5c060] transition-all">Sign Up</a>
+          </div>
+        </div>
+      </nav>
+
+      {/* HERO */}
+      <section className="relative h-screen flex items-center justify-center">
         <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
+          src="/background.jpg"
+          alt="Evento católico"
+          fill
+          className="object-cover"
           priority
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+        <div className="absolute inset-0 bg-gradient-to-b from-[#1a3a6b]/70 via-black/40 to-[#1a9b8c]/60" />
+        <div className="relative z-10 text-center text-white px-6">
+          <h1 className="font-serif text-5xl md:text-7xl font-bold mb-4 drop-shadow-lg">
+            Next In Faith
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-xl md:text-2xl font-light tracking-widest drop-shadow-md">
+            Donde la fe cobra vida
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      {/* CATEGORÍAS */}
+      <section
+        className="py-20 px-6"
+        style={{
+          background: "linear-gradient(170deg, #1a3a6b 0%, #1a6b8c 40%, #4aa8d8 75%, #dff0fb 100%)",
+        }}
+      >
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold text-center text-white mb-4">
+            Descubre eventos católicos
+          </h2>
+          <p className="text-center text-white/80 mb-12">
+            Encuentra retiros, conciertos, conferencias y más cerca de ti
+          </p>
+
+          {/* CARRUSEL */}
+          <div className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
+            {categorias.map((cat) => (
+              <div
+                key={cat.name}
+                className="snap-start flex-shrink-0 w-56 h-72 rounded-2xl overflow-hidden cursor-pointer hover:scale-105 transition-transform shadow-lg relative"
+                style={{ backgroundColor: cat.color }}
+              >
+                {/* Placeholder visual */}
+                <div
+                  className="absolute inset-0 opacity-20"
+                  style={{
+                    background: `radial-gradient(circle at 30% 70%, white 0%, transparent 60%)`,
+                  }}
+                />
+                {/* Nombre de categoría */}
+                <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/60 to-transparent">
+                  <p className="text-white font-bold text-lg">{cat.name}</p>
+                  <p className="text-white/70 text-xs mt-1">Ver eventos →</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+
+    </main>
   );
 }
