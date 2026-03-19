@@ -12,18 +12,34 @@ export default function Portal() {
   const handleLogin = async () => {
     setLoading(true);
     setError("");
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError("Correo o contraseña incorrectos");
+
+    // 1. Autenticar
+    const { data, error: errLogin } = await supabase.auth.signInWithPassword({ email, password });
+    if (errLogin || !data.user) {
+      setError("Correo o contraseña incorrectos.");
+      setLoading(false);
+      return;
+    }
+
+    // 2. Verificar si requiere cambio de clave
+    const { data: perfil } = await supabase
+      .from("profiles")
+      .select("cambio_clave")
+      .eq("id", data.user.id)
+      .single();
+
+    if (perfil?.cambio_clave === true) {
+      window.location.href = "/portal/cambio-clave";
     } else {
       window.location.href = "/portal/dashboard";
     }
+
     setLoading(false);
   };
 
   return (
     <main className="min-h-screen flex items-center justify-center"
-      style={{background: "linear-gradient(170deg, #1a3a6b 0%, #1a6b8c 40%, #4aa8d8 100%)"}}>
+      style={{ background: "linear-gradient(170deg, #1a3a6b 0%, #1a6b8c 40%, #4aa8d8 100%)" }}>
       <div className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-md mx-6">
         <div className="flex justify-center mb-6">
           <Image src="/logo_transparente.png" alt="Next In Faith" width={100} height={100} />
@@ -49,6 +65,7 @@ export default function Portal() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#4aa8d8]"
             />
           </div>
