@@ -182,7 +182,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
            </button>
           </div>
          </div>
-        </div>
+          </div>
 
         {/* Nav */}
         <nav style={{ flex: 1, paddingTop: 4 }}>
@@ -219,7 +219,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
        
       </aside>
 
-      <main style={{ flex: 1, minWidth: 0, overflow: "auto" }}>
+      <main style={{ flex: 1, minWidth: 0, overflow: "visible" }}>
         {children}
       </main>
     </div>

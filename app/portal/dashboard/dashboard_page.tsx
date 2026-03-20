@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createPortal } from "react-dom";
 import { supabase } from "../../lib/supabase";
 
 type Evento = {
@@ -55,16 +54,11 @@ export default function DashboardPage() {
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
   const [menuAbierto, setMenuAbierto] = useState<number | null>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
-  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { cargarEventos(); }, []);
 
   useEffect(() => {
-    setMounted(true);
-    cargarEventos();
-  }, []);
-
-  useEffect(() => {
-    const cerrar = () => { setMenuAbierto(null); setMenuPos(null); };
+    const cerrar = () => setMenuAbierto(null);
     document.addEventListener("mousedown", cerrar);
     return () => document.removeEventListener("mousedown", cerrar);
   }, []);
@@ -120,7 +114,6 @@ export default function DashboardPage() {
 
   const accionEvento = async (id: number, accion: string) => {
     setMenuAbierto(null);
-    setMenuPos(null);
     if (accion === "editar") { router.push(`/portal/dashboard/eventos/${id}/editar`); return; }
     if (accion === "ver") { router.push(`/portal/dashboard/eventos/${id}`); return; }
     if (accion === "aprobar") await supabase.from("eventos").update({ estado_publicacion: "publicado" }).eq("id", id);
@@ -135,6 +128,7 @@ export default function DashboardPage() {
     borderRadius: 8, background: "#fff", color: "#1a2b3c", outline: "none",
   };
 
+  // Anchos de columnas como porcentajes — usados tanto en header como en filas
   const cols = ["22%", "13%", "10%", "11%", "14%", "10%", "12%", "8%"];
   const colHeaders = ["Título", "Categoría", "Ciudad", "Fecha inicio", "Capturado por", "Exposición", "Estado", "Acciones"];
 
@@ -144,6 +138,12 @@ export default function DashboardPage() {
     display: "flex", alignItems: "center",
     ...extra,
   });
+
+  const rowStyle: React.CSSProperties = {
+    display: "flex", alignItems: "stretch",
+    borderBottom: "0.5px solid #e8f0f8",
+    cursor: "pointer",
+  };
 
   const headerCellStyle = (i: number): React.CSSProperties => ({
     width: cols[i], minWidth: 0, padding: "9px 12px",
@@ -225,7 +225,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Listado */}
+      {/* Listado — divs en lugar de tabla para permitir overflow del menú */}
       <div style={{ background: "#fff", border: "0.5px solid #c8d8e8", borderRadius: 12 }}>
 
         {/* Header */}
@@ -250,9 +250,7 @@ export default function DashboardPage() {
           eventosFiltrados.map((e, idx) => (
             <div key={e.id}
               style={{
-                display: "flex", alignItems: "stretch",
-                borderBottom: idx === eventosFiltrados.length - 1 ? "none" : "0.5px solid #e8f0f8",
-                cursor: "pointer",
+                ...rowStyle,
                 borderRadius: idx === eventosFiltrados.length - 1 ? "0 0 12px 12px" : undefined,
               }}
               onMouseEnter={(ev) => (ev.currentTarget.style.background = "#f5f9fd")}
@@ -271,61 +269,49 @@ export default function DashboardPage() {
               <div style={cellStyle(6)}>
                 <Badge value={e.estado_publicacion} map={BADGE_ESTADO} />
               </div>
-              <div style={{ ...cellStyle(7), justifyContent: "center" }}>
+
+              {/* Acciones — posición relativa en el div, no en td */}
+              <div style={{ ...cellStyle(7), justifyContent: "center", position: "relative" }}>
                 <button
                   onMouseDown={(ev) => ev.stopPropagation()}
-                  onClick={(ev) => {
-                    ev.stopPropagation();
-                    const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
-                    setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
-                    setMenuAbierto(menuAbierto === e.id ? null : e.id);
-                  }}
+                  onClick={() => setMenuAbierto(menuAbierto === e.id ? null : e.id)}
                   style={{ background: "none", border: "0.5px solid #c8d8e8", borderRadius: 6, padding: "2px 8px", cursor: "pointer", fontSize: 14, color: "#4a6278" }}>
                   ⋯
                 </button>
+                {menuAbierto === e.id && (
+                  <div
+                    onMouseDown={(ev) => ev.stopPropagation()}
+                    style={{
+                      position: "absolute", right: 8, top: 32, background: "#fff",
+                      border: "0.5px solid #c8d8e8", borderRadius: 8, zIndex: 100,
+                      minWidth: 160, boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+                    }}>
+                    {[
+                      { key: "editar", label: "Editar evento" },
+                      { key: "ver", label: "Ver detalle" },
+                      { key: "aprobar", label: "Aprobar" },
+                      { key: "rechazar", label: "Rechazar" },
+                      { key: "completa", label: "Exposición completa" },
+                      { key: "basica", label: "Exposición básica" },
+                    ].map((a) => (
+                      <div key={a.key}
+                        onClick={() => accionEvento(e.id, a.key)}
+                        style={{
+                          padding: "8px 12px", fontSize: 12, cursor: "pointer",
+                          color: a.key === "rechazar" ? "#A32D2D" : "#1a2b3c",
+                        }}
+                        onMouseEnter={(ev) => (ev.currentTarget.style.background = "#f5f9fd")}
+                        onMouseLeave={(ev) => (ev.currentTarget.style.background = "transparent")}>
+                        {a.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))
         )}
       </div>
-
-      {/* Portal — menú fuera del árbol DOM para evitar clipping */}
-      {mounted && menuAbierto !== null && menuPos && createPortal(
-        <div
-          onMouseDown={(ev) => ev.stopPropagation()}
-          style={{
-            position: "fixed",
-            top: menuPos.top,
-            right: menuPos.right,
-            background: "#fff",
-            border: "0.5px solid #c8d8e8",
-            borderRadius: 8,
-            zIndex: 9999,
-            minWidth: 160,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-          }}>
-          {[
-            { key: "editar", label: "Editar evento" },
-            { key: "ver", label: "Ver detalle" },
-            { key: "aprobar", label: "Aprobar" },
-            { key: "rechazar", label: "Rechazar" },
-            { key: "completa", label: "Exposición completa" },
-            { key: "basica", label: "Exposición básica" },
-          ].map((a) => (
-            <div key={a.key}
-              onClick={() => accionEvento(menuAbierto, a.key)}
-              style={{
-                padding: "8px 12px", fontSize: 12, cursor: "pointer",
-                color: a.key === "rechazar" ? "#A32D2D" : "#1a2b3c",
-              }}
-              onMouseEnter={(ev) => (ev.currentTarget.style.background = "#f5f9fd")}
-              onMouseLeave={(ev) => (ev.currentTarget.style.background = "transparent")}>
-              {a.label}
-            </div>
-          ))}
-        </div>,
-        document.body
-      )}
     </div>
   );
 }

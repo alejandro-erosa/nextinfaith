@@ -207,7 +207,7 @@ export default function EventoDetallePage() {
         {" / "}{evento.titulo}
       </div>
 
-      {/* Header — solo título y badges, sin botones de acción */}
+      {/* Header — solo título y badges, con botn de Editar */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
           <span style={{ fontSize: 17, fontWeight: 500, color: "#1a2b3c" }}>{evento.titulo}</span>
@@ -217,7 +217,12 @@ export default function EventoDetallePage() {
         <div style={{ fontSize: 12, color: "#4a6278" }}>
           {evento.categorias?.nombre} · {evento.ciudad}, {evento.estado} · Creado {formatFecha(evento.created_at)}
         </div>
+        <button onClick={() => router.push(`/portal/dashboard/eventos/${id}/editar`)}
+          style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>
+          Editar evento
+        </button>
       </div>
+
 
       {/* Tabs dinámicas */}
       <div style={{ display: "flex", borderBottom: "0.5px solid #c8d8e8", marginBottom: 20 }}>
