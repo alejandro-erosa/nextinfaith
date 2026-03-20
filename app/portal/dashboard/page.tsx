@@ -73,7 +73,7 @@ export default function DashboardPage() {
         id, titulo, ciudad, fecha_inicio, modalidad, costo_minimo,
         estado_publicacion, exposicion,
         categorias ( nombre ),
-        profiles ( nombre, apellido )
+        profiles!organizador_id ( nombre, apellido )
       `)
       .order("fecha_inicio", { ascending: true });
 
@@ -137,13 +137,13 @@ export default function DashboardPage() {
   const col = (w: string): React.CSSProperties => ({
     padding: "10px 12px", fontSize: 12, color: "#1a2b3c",
     borderBottom: "0.5px solid #e8f0f8", verticalAlign: "middle",
-    width, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+    width: w, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
   });
 
   const th = (w: string): React.CSSProperties => ({
     padding: "9px 12px", fontSize: 11, fontWeight: 500, color: "#4a6278",
     background: "#f5f9fd", borderBottom: "0.5px solid #c8d8e8",
-    textAlign: "left", width,
+    textAlign: "left", width: w,
   });
 
   return (
@@ -181,7 +181,13 @@ export default function DashboardPage() {
               placeholder="Ciudad..."
               value={filtroCiudad}
               onChange={e => setFiltroCiudad(e.target.value)}
+              list="ciudades-list"
             />
+            <datalist id="ciudades-list">
+              {[...new Set(eventos.map(e => e.ciudad).filter(Boolean))].sort().map(c => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
           </div>
         </div>
 
