@@ -60,6 +60,8 @@ export default function EditarEventoPage() {
   const [imagenPreview, setImagenPreview] = useState("");
   const [imagenActual, setImagenActual] = useState("");
   const [tienePrograma, setTienePrograma] = useState(false);
+  const [programaDescripcion, setProgramaDescripcion] = useState("");
+  const [telefonoContacto, setTelefonoContacto] = useState("");
   const [tieneLocalidades, setTieneLocalidades] = useState(false);
 
   // Pestaña 2
@@ -83,6 +85,8 @@ export default function EditarEventoPage() {
   const [capacidadAforo, setCapacidadAforo] = useState("");
   const [disponibleOnline, setDisponibleOnline] = useState(false);
   const [urlTransmision, setUrlTransmision] = useState("");
+  const [periodicidadConf, setPeriodicidadConf] = useState("");
+  const [periodicidadRetiro, setPeriodicidadRetiro] = useState("");
   const [agencia, setAgencia] = useState("");
   const [incluyeVuelo, setIncluyeVuelo] = useState(false);
   const [incluyeHotel, setIncluyeHotel] = useState(false);
@@ -138,6 +142,8 @@ export default function EditarEventoPage() {
     setImagenActual(ev.url_imagen ?? "");
     setTienePrograma(ev.tiene_programa ?? false);
     setTieneLocalidades(ev.tiene_localidades ?? false);
+    setTelefonoContacto(ev.telefono_contacto ?? "");
+    setProgramaDescripcion(ev.programa_descripcion ?? "");
 
     // Nombre categoría padre
     // Se resolverá cuando slugMap esté listo — se maneja en onCategoriaChange
@@ -179,6 +185,7 @@ export default function EditarEventoPage() {
       setIncluyeAlimentacion(extR.incluye_alimentacion ?? false);
       setFacilitador(extR.facilitador ?? "");
       setRequiereInscripcion(extR.requiere_inscripcion_previa ?? false);
+      setPeriodicidadRetiro(extR.periodicidad ?? "");
     }
     const { data: extConf } = await supabase.from("ext_conferencias").select("*").eq("evento_id", id).single();
     if (extConf) {
@@ -187,6 +194,7 @@ export default function EditarEventoPage() {
       setCapacidadAforo(extConf.capacidad_aforo?.toString() ?? "");
       setDisponibleOnline(extConf.disponible_online ?? false);
       setUrlTransmision(extConf.url_transmision ?? "");
+      setPeriodicidadConf(extConf.periodicidad ?? "");
     }
     const { data: extP } = await supabase.from("ext_peregrinaciones").select("*").eq("evento_id", id).single();
     if (extP) {
@@ -268,6 +276,8 @@ export default function EditarEventoPage() {
       ciudad, estado: estadoEvento, pais, venue, direccion, modalidad,
       costo_minimo: costoMinimo, url_evento: urlEvento || null,
       tiene_programa: tienePrograma, tiene_localidades: tieneLocalidades,
+      telefono_contacto: telefonoContacto || null,
+      programa_descripcion: tienePrograma ? (programaDescripcion || null) : null,
     }).eq("id", id);
 
     if (imagenFile) {
@@ -339,6 +349,7 @@ export default function EditarEventoPage() {
         incluye_alimentacion: incluyeAlimentacion,
         facilitador: facilitador || null,
         requiere_inscripcion_previa: requiereInscripcion,
+        periodicidad: periodicidadRetiro || null,
       });
     }
     if (tipo === "conferencia") {
@@ -348,6 +359,7 @@ export default function EditarEventoPage() {
         capacidad_aforo: capacidadAforo ? parseInt(capacidadAforo) : null,
         disponible_online: disponibleOnline,
         url_transmision: urlTransmision || null,
+        periodicidad: periodicidadConf || null,
       });
     }
     if (tipo === "peregrinacion") {
@@ -479,6 +491,11 @@ export default function EditarEventoPage() {
               <div><label style={lbl}>Costo mínimo (MXN)</label><input style={inp} type="number" min={0} value={costoMinimo} onChange={e => setCostoMinimo(Number(e.target.value))} /></div>
               <div><label style={lbl}>Sitio oficial del evento</label><input style={inp} value={urlEvento} onChange={e => setUrlEvento(e.target.value)} placeholder="https://..." /></div>
             </div>
+            <div style={{ marginTop: 12 }}>
+              <label style={lbl}>Teléfono de contacto del evento</label>
+              <input style={{ ...inp, maxWidth: 260 }} value={telefonoContacto} onChange={e => setTelefonoContacto(e.target.value)} placeholder="Ej. 52 55 1234 5678" />
+              <div style={{ fontSize: 11, color: "#7a9ab0", marginTop: 4 }}>Número visible al público para información o venta de boletos de este evento específico.</div>
+            </div>
           </div>
 
           <div style={card}>
@@ -525,11 +542,17 @@ export default function EditarEventoPage() {
           <div style={card}>
             <div style={cardT}>Configuración de pestañas</div>
             <div style={{ fontSize: 12, color: "#4a6278", marginBottom: 12 }}>Activa las pestañas adicionales que aplican a este evento.</div>
-            <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={chk}>
                 <input type="checkbox" id="tienePrograma" checked={tienePrograma} onChange={e => setTienePrograma(e.target.checked)} style={{ width: 16, height: 16 }} />
                 <label htmlFor="tienePrograma" style={{ fontSize: 13, color: "#1a2b3c", cursor: "pointer" }}>Tiene programa — agenda de sesiones, artistas o expositores</label>
               </div>
+              {tienePrograma && (
+                <div style={{ marginLeft: 24 }}>
+                  <label style={lbl}>Descripción del programa</label>
+                  <textarea style={{ ...inp, minHeight: 100, resize: "vertical" }} value={programaDescripcion} onChange={e => setProgramaDescripcion(e.target.value)} placeholder="Describe el programa, módulos, sesiones, maestros, horarios, etc." />
+                </div>
+              )}
               <div style={chk}>
                 <input type="checkbox" id="tieneLocalidades" checked={tieneLocalidades} onChange={e => setTieneLocalidades(e.target.checked)} style={{ width: 16, height: 16 }} />
                 <label htmlFor="tieneLocalidades" style={{ fontSize: 13, color: "#1a2b3c", cursor: "pointer" }}>Tiene localidades — zonas, asientos o tipos de acceso con precio</label>
@@ -625,11 +648,22 @@ export default function EditarEventoPage() {
 
           {tipo === "retiro" && (
             <div style={card}>
-              <div style={cardT}>Detalles del retiro</div>
+              <div style={cardT}>Detalles del retiro / seminario</div>
               <div style={{ ...g3, marginBottom: 12 }}>
                 <div><label style={lbl}>Cupo máximo</label><input style={inp} type="number" min={0} value={cupoMaximo} onChange={e => setCupoMaximo(e.target.value)} /></div>
                 <div><label style={lbl}>Precio completo (MXN)</label><input style={inp} type="number" min={0} value={precioCompleto} onChange={e => setPrecioCompleto(Number(e.target.value))} /></div>
                 <div><label style={lbl}>Facilitador espiritual</label><input style={inp} value={facilitador} onChange={e => setFacilitador(e.target.value)} /></div>
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={lbl}>Periodicidad</label>
+                <select style={{ ...inp, maxWidth: 260 }} value={periodicidadRetiro} onChange={e => setPeriodicidadRetiro(e.target.value)}>
+                  <option value="">Selecciona...</option>
+                  <option value="unica">Única (no se repite)</option>
+                  <option value="semanal">Semanal</option>
+                  <option value="quincenal">Quincenal</option>
+                  <option value="mensual">Mensual</option>
+                  <option value="anual">Anual</option>
+                </select>
               </div>
               <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
                 {[
@@ -648,13 +682,24 @@ export default function EditarEventoPage() {
 
           {tipo === "conferencia" && (
             <div style={card}>
-              <div style={cardT}>Detalles de la conferencia</div>
+              <div style={cardT}>Detalles de la conferencia / congreso / diplomado</div>
               <div style={{ marginBottom: 12 }}><label style={lbl}>Ponentes (separados por coma)</label><input style={inp} value={ponentes} onChange={e => setPonentes(e.target.value)} /></div>
               <div style={{ marginBottom: 12 }}><label style={lbl}>Temática central</label><input style={inp} value={tematica} onChange={e => setTematica(e.target.value)} /></div>
               <div style={{ ...g2, marginBottom: 12 }}>
                 <div><label style={lbl}>Capacidad de aforo</label><input style={inp} type="number" min={0} value={capacidadAforo} onChange={e => setCapacidadAforo(e.target.value)} /></div>
-                <div><label style={lbl}>URL transmisión online</label><input style={inp} value={urlTransmision} onChange={e => setUrlTransmision(e.target.value)} placeholder="https://..." /></div>
+                <div>
+                  <label style={lbl}>Periodicidad</label>
+                  <select style={inp} value={periodicidadConf} onChange={e => setPeriodicidadConf(e.target.value)}>
+                    <option value="">Selecciona...</option>
+                    <option value="unica">Única (no se repite)</option>
+                    <option value="semanal">Semanal</option>
+                    <option value="quincenal">Quincenal</option>
+                    <option value="mensual">Mensual</option>
+                    <option value="anual">Anual</option>
+                  </select>
+                </div>
               </div>
+              <div style={{ marginBottom: 12 }}><label style={lbl}>URL transmisión online</label><input style={inp} value={urlTransmision} onChange={e => setUrlTransmision(e.target.value)} placeholder="https://..." /></div>
               <div style={chk}>
                 <input type="checkbox" id="online" checked={disponibleOnline} onChange={e => setDisponibleOnline(e.target.checked)} style={{ width: 16, height: 16 }} />
                 <label htmlFor="online" style={{ fontSize: 13, color: "#1a2b3c", cursor: "pointer" }}>Disponible en línea</label>

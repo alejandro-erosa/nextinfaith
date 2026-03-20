@@ -24,6 +24,8 @@ type Evento = {
   exposicion: string;
   tiene_programa: boolean;
   tiene_localidades: boolean;
+  telefono_contacto: string;
+  programa_descripcion: string;
   created_at: string;
   updated_at: string;
   categorias: { id: number; nombre: string } | null;
@@ -207,7 +209,7 @@ export default function EventoDetallePage() {
         {" / "}{evento.titulo}
       </div>
 
-      {/* Header — solo título y badges, con botn de Editar */}
+      {/* Header — solo título y badges, sin botones de acción */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
           <span style={{ fontSize: 17, fontWeight: 500, color: "#1a2b3c" }}>{evento.titulo}</span>
@@ -217,12 +219,7 @@ export default function EventoDetallePage() {
         <div style={{ fontSize: 12, color: "#4a6278" }}>
           {evento.categorias?.nombre} · {evento.ciudad}, {evento.estado} · Creado {formatFecha(evento.created_at)}
         </div>
-        <button onClick={() => router.push(`/portal/dashboard/eventos/${id}/editar`)}
-          style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>
-          Editar evento
-        </button>
       </div>
-
 
       {/* Tabs dinámicas */}
       <div style={{ display: "flex", borderBottom: "0.5px solid #c8d8e8", marginBottom: 20 }}>
@@ -283,12 +280,15 @@ export default function EventoDetallePage() {
                 </div>
               )}
             </Card>
-            <Card title="Enlace externo">
-              <Field label="Sitio oficial" value={
-                evento.url_evento
-                  ? <a href={evento.url_evento} target="_blank" rel="noreferrer" style={{ color: "#1a6b8c", fontSize: 12 }}>{evento.url_evento}</a>
-                  : "—"
-              } />
+            <Card title="Enlace y contacto">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <Field label="Sitio oficial" value={
+                  evento.url_evento
+                    ? <a href={evento.url_evento} target="_blank" rel="noreferrer" style={{ color: "#1a6b8c", fontSize: 12 }}>{evento.url_evento}</a>
+                    : "—"
+                } />
+                <Field label="Teléfono de contacto" value={evento.telefono_contacto || "—"} />
+              </div>
             </Card>
 
             {/* Control editorial — radio buttons */}
@@ -350,13 +350,16 @@ export default function EventoDetallePage() {
       {/* Tab: Programa */}
       {tab === "programa" && evento.tiene_programa && (
         <div>
+          {evento.programa_descripcion && (
+            <Card title="Descripción del programa">
+              <div style={{ fontSize: 13, color: "#1a2b3c", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{evento.programa_descripcion}</div>
+            </Card>
+          )}
           <Card title="Artistas y ministerios">
             {artista?.artistas ? (
               artista.artistas.split(",").map((a, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 0", borderBottom: "0.5px solid #e8f0f8" }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: "#1a2b3c" }}>{a.trim()}</div>
-                  </div>
+                  <div><div style={{ fontSize: 13, fontWeight: 500, color: "#1a2b3c" }}>{a.trim()}</div></div>
                   <Badge value={i === 0 ? "principal" : "invitado"} map={{ principal: { bg: "#dff0fb", color: "#185FA5" }, invitado: { bg: "#F1EFE8", color: "#5F5E5A" } }} />
                 </div>
               ))
