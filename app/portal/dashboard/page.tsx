@@ -46,13 +46,18 @@ export default function DashboardPage() {
   const router = useRouter();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Filtros
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroCiudad, setFiltroCiudad] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroExpo, setFiltroExpo] = useState("");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+
   const [menuAbierto, setMenuAbierto] = useState<number | null>(null);
 
-  useEffect(() => {
-    cargarEventos();
-  }, []);
+  useEffect(() => { cargarEventos(); }, []);
 
   useEffect(() => {
     const cerrar = () => setMenuAbierto(null);
@@ -83,37 +88,50 @@ export default function DashboardPage() {
     setLoading(false);
   };
 
+  // Filtrado client-side — eficiente para el volumen actual de NIF
   const eventosFiltrados = eventos.filter((e) => {
+    const texto = busqueda.toLowerCase();
+    const okBusqueda = !busqueda ||
+      e.titulo.toLowerCase().includes(texto) ||
+      e.ciudad.toLowerCase().includes(texto);
+    const okCiudad = !filtroCiudad ||
+      e.ciudad.toLowerCase().includes(filtroCiudad.toLowerCase());
     const okEstado = !filtroEstado || e.estado_publicacion === filtroEstado;
     const okExpo = !filtroExpo || e.exposicion === filtroExpo;
-    return okEstado && okExpo;
+    const okDesde = !fechaDesde || (e.fecha_inicio && e.fecha_inicio >= fechaDesde);
+    const okHasta = !fechaHasta || (e.fecha_inicio && e.fecha_inicio <= fechaHasta);
+    return okBusqueda && okCiudad && okEstado && okExpo && okDesde && okHasta;
   });
+
+  const limpiarFiltros = () => {
+    setBusqueda("");
+    setFiltroCiudad("");
+    setFiltroEstado("");
+    setFiltroExpo("");
+    setFechaDesde("");
+    setFechaHasta("");
+  };
+
+  const hayFiltrosActivos = busqueda || filtroCiudad || filtroEstado || filtroExpo || fechaDesde || fechaHasta;
 
   const formatFecha = (fecha: string) => {
     if (!fecha) return "—";
-    const d = new Date(fecha);
-    return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+    return new Date(fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
   };
 
   const accionEvento = async (id: number, accion: string) => {
     setMenuAbierto(null);
-    if (accion === "ver") {
-      router.push(`/portal/dashboard/eventos/${id}`);
-      return;
-    }
-    if (accion === "aprobar") {
-      await supabase.from("eventos").update({ estado_publicacion: "publicado" }).eq("id", id);
-    }
-    if (accion === "rechazar") {
-      await supabase.from("eventos").update({ estado_publicacion: "rechazado" }).eq("id", id);
-    }
-    if (accion === "basica") {
-      await supabase.from("eventos").update({ exposicion: "basica" }).eq("id", id);
-    }
-    if (accion === "completa") {
-      await supabase.from("eventos").update({ exposicion: "completa" }).eq("id", id);
-    }
+    if (accion === "ver") { router.push(`/portal/dashboard/eventos/${id}`); return; }
+    if (accion === "aprobar") await supabase.from("eventos").update({ estado_publicacion: "publicado" }).eq("id", id);
+    if (accion === "rechazar") await supabase.from("eventos").update({ estado_publicacion: "rechazado" }).eq("id", id);
+    if (accion === "basica") await supabase.from("eventos").update({ exposicion: "basica" }).eq("id", id);
+    if (accion === "completa") await supabase.from("eventos").update({ exposicion: "completa" }).eq("id", id);
     await cargarEventos();
+  };
+
+  const inp: React.CSSProperties = {
+    fontSize: 12, padding: "5px 8px", border: "0.5px solid #c8d8e8",
+    borderRadius: 8, background: "#fff", color: "#1a2b3c", outline: "none",
   };
 
   const col = (w: string): React.CSSProperties => ({
@@ -143,23 +161,69 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* Filtros */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}
-          style={{ fontSize: 12, padding: "5px 8px", border: "0.5px solid #c8d8e8", borderRadius: 8, background: "#fff", color: "#1a2b3c", cursor: "pointer" }}>
-          <option value="">Todos los estados</option>
-          <option value="publicado">Publicado</option>
-          <option value="en_revision">En revisión</option>
-          <option value="borrador">Borrador</option>
-          <option value="rechazado">Rechazado</option>
-          <option value="cancelado">Cancelado</option>
-        </select>
-        <select value={filtroExpo} onChange={(e) => setFiltroExpo(e.target.value)}
-          style={{ fontSize: 12, padding: "5px 8px", border: "0.5px solid #c8d8e8", borderRadius: 8, background: "#fff", color: "#1a2b3c", cursor: "pointer" }}>
-          <option value="">Toda exposición</option>
-          <option value="completa">Completa</option>
-          <option value="basica">Básica</option>
-        </select>
+      {/* Barra de búsqueda */}
+      <div style={{ background: "#fff", border: "0.5px solid #c8d8e8", borderRadius: 12, padding: 16, marginBottom: 16 }}>
+        {/* Fila 1: búsqueda de texto + ciudad */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+          <div>
+            <label style={{ fontSize: 11, color: "#7a9ab0", display: "block", marginBottom: 4 }}>Buscar por nombre</label>
+            <input
+              style={{ ...inp, width: "100%" }}
+              placeholder="Nombre del evento..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#7a9ab0", display: "block", marginBottom: 4 }}>Ciudad</label>
+            <input
+              style={{ ...inp, width: "100%" }}
+              placeholder="Ciudad..."
+              value={filtroCiudad}
+              onChange={e => setFiltroCiudad(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Fila 2: fechas + estado + exposición + limpiar */}
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div>
+            <label style={{ fontSize: 11, color: "#7a9ab0", display: "block", marginBottom: 4 }}>Fecha desde</label>
+            <input type="date" style={inp} value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#7a9ab0", display: "block", marginBottom: 4 }}>Fecha hasta</label>
+            <input type="date" style={inp} value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#7a9ab0", display: "block", marginBottom: 4 }}>Estado</label>
+            <select style={{ ...inp, cursor: "pointer" }} value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}>
+              <option value="">Todos</option>
+              <option value="publicado">Publicado</option>
+              <option value="en_revision">En revisión</option>
+              <option value="borrador">Borrador</option>
+              <option value="rechazado">Rechazado</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#7a9ab0", display: "block", marginBottom: 4 }}>Exposición</label>
+            <select style={{ ...inp, cursor: "pointer" }} value={filtroExpo} onChange={e => setFiltroExpo(e.target.value)}>
+              <option value="">Todas</option>
+              <option value="completa">Completa</option>
+              <option value="basica">Básica</option>
+            </select>
+          </div>
+          {hayFiltrosActivos && (
+            <button onClick={limpiarFiltros}
+              style={{ ...inp, cursor: "pointer", color: "#A32D2D", border: "0.5px solid #F09595", background: "#FCEBEB", alignSelf: "flex-end" }}>
+              Limpiar filtros
+            </button>
+          )}
+          <div style={{ marginLeft: "auto", alignSelf: "flex-end", fontSize: 12, color: "#7a9ab0" }}>
+            {eventosFiltrados.length} de {eventos.length} eventos
+          </div>
+        </div>
       </div>
 
       {/* Tabla */}
@@ -167,7 +231,14 @@ export default function DashboardPage() {
         {loading ? (
           <div style={{ padding: 40, textAlign: "center", fontSize: 13, color: "#4a6278" }}>Cargando eventos...</div>
         ) : eventosFiltrados.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center", fontSize: 13, color: "#4a6278" }}>No hay eventos que coincidan con los filtros.</div>
+          <div style={{ padding: 40, textAlign: "center", fontSize: 13, color: "#4a6278" }}>
+            No hay eventos que coincidan con los filtros.
+            {hayFiltrosActivos && (
+              <span style={{ color: "#1a6b8c", cursor: "pointer", marginLeft: 8 }} onClick={limpiarFiltros}>
+                Limpiar filtros
+              </span>
+            )}
+          </div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <thead>
@@ -176,7 +247,7 @@ export default function DashboardPage() {
                 <th style={th("13%")}>Categoría</th>
                 <th style={th("10%")}>Ciudad</th>
                 <th style={th("11%")}>Fecha inicio</th>
-                <th style={th("14%")}>Organizador</th>
+                <th style={th("14%")}>Capturado por</th>
                 <th style={th("10%")}>Exposición</th>
                 <th style={th("12%")}>Estado</th>
                 <th style={{ ...th("8%"), textAlign: "center" }}>Acciones</th>

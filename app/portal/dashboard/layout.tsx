@@ -170,11 +170,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
            <div style={{ fontSize: 12, color: "#fff", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {userNombre || userEmail}
             </div>
-           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
-             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                {userEmail}
-             </div>
-           </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2, gap: 8 }}>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                 {userEmail}
+            </div>
+           <button onClick={handleLogout} style={{
+             background: "none", border: "none", cursor: "pointer",
+             color: "rgba(255,255,255,0.4)", fontSize: 11, padding: 0, flexShrink: 0
+              }}>
+             Salir
+           </button>
+          </div>
          </div>
         </div>
 
@@ -210,19 +216,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
 
-       {/* Botn de salir */}
-        <div style={{
-          padding: "12px 16px",
-         borderTop: "0.5px solid rgba(255,255,255,0.12)",
-         display: "flex", alignItems: "rigth", justifyContent: "space-between", gap: 8
-        }}>
-         <button onClick={handleLogout} style={{
-           background: "none", border: "none", cursor: "pointer",
-           color: "rgba(255,255,255,0.4)", fontSize: 11, padding: 0, flexShrink: 0
-         }}>
-          Salir
-         </button>
-        </div>
+       
       </aside>
 
       <main style={{ flex: 1, minWidth: 0, overflow: "auto" }}>

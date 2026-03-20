@@ -1,343 +1,698 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../../lib/supabase";
 
-const CATEGORIAS = [
-  { id: 1, nombre: "Retiros" },
-  { id: 2, nombre: "Conciertos y Alabanza" },
-  { id: 3, nombre: "Conferencias" },
-  { id: 4, nombre: "Peregrinaciones" },
-  { id: 5, nombre: "Eventos Juveniles" },
-  { id: 6, nombre: "Eventos Masivos" },
-];
-
+type Categoria = { id: number; nombre: string; parent_id: number | null; slug: string };
+type CategoriaGrupo = { id: number; nombre: string; subcategorias: Categoria[] };
 type Fecha = { fecha: string; hora_inicio: string; hora_fin: string; ciudad: string; estado: string; venue: string };
 
 const fechaVacia = (): Fecha => ({ fecha: "", hora_inicio: "", hora_fin: "", ciudad: "", estado: "", venue: "" });
 
+const detectarTipo = (slug: string) => {
+  if (!slug) return "general";
+  if (slug.includes("concierto") || slug.includes("coro") || slug.includes("oracion") || slug.includes("festival") || slug.includes("musical")) return "concierto";
+  if (slug.includes("retiro") || slug.includes("campamento") || slug.includes("encuentro") || slug.includes("adoracion") || slug.includes("hora-santa") || slug.includes("vigilia")) return "retiro";
+  if (slug.includes("congreso") || slug.includes("taller") || slug.includes("seminario") || slug.includes("cumbre") || slug.includes("foro") || slug.includes("diplomado") || slug.includes("escuela")) return "conferencia";
+  if (slug.includes("peregrinacion") || slug.includes("santuario") || slug.includes("internacional") || slug.includes("viaje")) return "peregrinacion";
+  return "general";
+};
+
+const TIPO_LABEL: Record<string, string> = {
+  concierto: "Concierto / Evento musical",
+  retiro: "Retiro / Encuentro espiritual",
+  conferencia: "Conferencia / Congreso",
+  peregrinacion: "Peregrinación / Viaje católico",
+  general: "Evento general",
+};
+
 export default function NuevoEventoPage() {
   const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Pestañas
+  const [tabActual, setTabActual] = useState(0);
+  const [eventoId, setEventoId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Campos base
-  const [titulo, setTitulo] = useState("Concierto Martín Valverde — Gira 2026");
-  const [descripcion, setDescripcion] = useState("Concierto del cantautor católico Martín Valverde como parte de su gira conmemorativa por 45 años de trayectoria en la música católica.");
-  const [categoriaId, setCategoriaId] = useState(2);
-  const [ciudad, setCiudad] = useState("Tampico");
-  const [estado, setEstado] = useState("Tamaulipas");
+  // Categorías
+  const [grupos, setGrupos] = useState<CategoriaGrupo[]>([]);
+  const [slugMap, setSlugMap] = useState<Record<number, string>>({});
+  const [nombreCatPadre, setNombreCatPadre] = useState("");
+
+  // Pestaña 1 — Info general
+  const [titulo, setTitulo] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [categoriaId, setCategoriaId] = useState<number | "">("");
+  const [ciudad, setCiudad] = useState("");
+  const [estadoEvento, setEstadoEvento] = useState("");
   const [pais, setPais] = useState("México");
-  const [venue, setVenue] = useState("Auditorio Municipal de Tampico");
+  const [venue, setVenue] = useState("");
   const [direccion, setDireccion] = useState("");
   const [modalidad, setModalidad] = useState("presencial");
-  const [costoMinimo, setCostoMinimo] = useState(150);
+  const [costoMinimo, setCostoMinimo] = useState(0);
   const [urlEvento, setUrlEvento] = useState("");
+  const [imagenFile, setImagenFile] = useState<File | null>(null);
+  const [imagenPreview, setImagenPreview] = useState("");
+  const [subiendoImagen, setSubiendoImagen] = useState(false);
+  // NUEVO: estado de error de imagen separado
+  const [errorImagen, setErrorImagen] = useState("");
 
-  // Fechas múltiples
-  const [fechas, setFechas] = useState<Fecha[]>([
-    { fecha: "2026-03-20", hora_inicio: "20:30", hora_fin: "", ciudad: "Tampico", estado: "Tamaulipas", venue: "Auditorio Municipal de Tampico" }
-  ]);
+  // Flags de pestañas
+  const [tienePrograma, setTienePrograma] = useState(false);
+  const [tieneLocalidades, setTieneLocalidades] = useState(false);
 
-  // Campos ext_conciertos
-  const [artistas, setArtistas] = useState("Martín Valverde");
-  const [horaApertura, setHoraApertura] = useState("19:00");
+  // Pestaña 2 — Fechas
+  const [fechas, setFechas] = useState<Fecha[]>([fechaVacia()]);
+
+  // Pestaña 3 — Detalles según tipo
+  const [artistas, setArtistas] = useState("");
+  const [horaApertura, setHoraApertura] = useState("");
   const [edadMinima, setEdadMinima] = useState("");
-  const [precioGeneral, setPrecioGeneral] = useState(150);
-  const [precioVip, setPrecioVip] = useState(250);
+  const [precioGeneral, setPrecioGeneral] = useState(0);
+  const [precioVip, setPrecioVip] = useState(0);
   const [tieneZonaFamiliar, setTieneZonaFamiliar] = useState(false);
+  const [cupoMaximo, setCupoMaximo] = useState("");
+  const [precioCompleto, setPrecioCompleto] = useState(0);
+  const [incluyeHospedaje, setIncluyeHospedaje] = useState(false);
+  const [incluyeAlimentacion, setIncluyeAlimentacion] = useState(false);
+  const [facilitador, setFacilitador] = useState("");
+  const [requiereInscripcion, setRequiereInscripcion] = useState(false);
+  const [ponentes, setPonentes] = useState("");
+  const [tematica, setTematica] = useState("");
+  const [capacidadAforo, setCapacidadAforo] = useState("");
+  const [disponibleOnline, setDisponibleOnline] = useState(false);
+  const [urlTransmision, setUrlTransmision] = useState("");
+  const [agencia, setAgencia] = useState("");
+  const [incluyeVuelo, setIncluyeVuelo] = useState(false);
+  const [incluyeHotel, setIncluyeHotel] = useState(false);
+  const [incluyeGuia, setIncluyeGuia] = useState(false);
+  const [duracionDias, setDuracionDias] = useState("");
+  const [precioPorPersona, setPrecioPorPersona] = useState(0);
 
-  const agregarFecha = () => setFechas([...fechas, fechaVacia()]);
-  const quitarFecha = (i: number) => setFechas(fechas.filter((_, idx) => idx !== i));
-  const actualizarFecha = (i: number, campo: keyof Fecha, valor: string) => {
-    const nuevas = [...fechas];
-    nuevas[i] = { ...nuevas[i], [campo]: valor };
-    setFechas(nuevas);
+  useEffect(() => { cargarCategorias(); }, []);
+
+  const cargarCategorias = async () => {
+    const { data } = await supabase
+      .from("categorias")
+      .select("id, nombre, parent_id, slug")
+      .eq("activo", true)
+      .order("orden");
+    if (!data) return;
+    const padres = data.filter((c: any) => !c.parent_id);
+    const hijos = data.filter((c: any) => c.parent_id);
+    setGrupos(padres.map((p: any) => ({
+      id: p.id, nombre: p.nombre,
+      subcategorias: hijos.filter((h: any) => h.parent_id === p.id),
+    })));
+    const sm: Record<number, string> = {};
+    data.forEach((c: any) => { sm[c.id] = c.slug ?? ""; });
+    setSlugMap(sm);
   };
 
-  const guardar = async () => {
-    if (!titulo.trim()) { setError("El título es obligatorio."); return; }
-    if (!ciudad.trim()) { setError("La ciudad es obligatoria."); return; }
-    if (fechas.length === 0) { setError("Agrega al menos una fecha."); return; }
+  const onCategoriaChange = (id: number) => {
+    setCategoriaId(id);
+    const slug = slugMap[id] ?? "";
+    const grupo = grupos.find(g => g.subcategorias.some(s => s.id === id));
+    setNombreCatPadre(grupo?.nombre ?? "");
+  };
 
-    setSaving(true);
-    setError("");
+  const slugActual = categoriaId ? (slugMap[categoriaId as number] ?? "") : "";
+  const tipo = detectarTipo(slugActual);
+  const subcatNombre = categoriaId ? grupos.flatMap(g => g.subcategorias).find(s => s.id === categoriaId)?.nombre ?? "" : "";
 
-    // 1. Obtener usuario actual
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setError("Sesión expirada. Vuelve a iniciar sesión."); setSaving(false); return; }
+  const TABS = ["Información general", "Fechas y sedes", `Detalles: ${TIPO_LABEL[tipo]}`, "Corresponsales"];
 
-    // 2. Insertar evento base
-    const primeraFecha = fechas[0];
-    const { data: evento, error: errEvento } = await supabase
+  const onImagenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImagenFile(file);
+    setImagenPreview(URL.createObjectURL(file));
+    setErrorImagen(""); // limpiar error previo al seleccionar nueva imagen
+  };
+
+  // MODIFICADO: retorna { url, error } en lugar de solo url | null
+  const subirImagen = async (eventoIdParam: number): Promise<{ url: string | null; errorMsg: string }> => {
+    if (!imagenFile) return { url: null, errorMsg: "" };
+    setSubiendoImagen(true);
+    const ext = imagenFile.name.split(".").pop();
+    const path = `evento-${eventoIdParam}-${Date.now()}.${ext}`;
+    const { error: errUp } = await supabase.storage
       .from("eventos")
-      .insert({
-        titulo,
-        descripcion,
-        categoria_id: categoriaId,
-        organizador_id: user.id,
-        ciudad,
-        estado,
-        pais,
-        venue,
-        direccion,
-        fecha_inicio: primeraFecha.fecha || null,
-        fecha_fin: fechas[fechas.length - 1].fecha || null,
-        hora_inicio: primeraFecha.hora_inicio || null,
-        hora_fin: primeraFecha.hora_fin || null,
-        modalidad,
-        costo_minimo: costoMinimo,
-        url_evento: urlEvento || null,
-        estado_publicacion: "borrador",
-        exposicion: "basica",
-        revisado_por: null,
-      })
-      .select()
-      .single();
+      .upload(path, imagenFile, { upsert: true });
+    setSubiendoImagen(false);
+    if (errUp) {
+      return { url: null, errorMsg: `Error al subir imagen: ${errUp.message}` };
+    }
+    const { data } = supabase.storage.from("eventos").getPublicUrl(path);
+    return { url: data.publicUrl, errorMsg: "" };
+  };
 
-    if (errEvento || !evento) {
-      setError("Error al guardar el evento: " + (errEvento?.message ?? "desconocido"));
-      setSaving(false);
+  // NUEVO: función independiente para reintentar solo la subida de imagen
+  const reintentarSubidaImagen = async () => {
+    if (!eventoId || !imagenFile) return;
+    setErrorImagen("");
+    const { url, errorMsg } = await subirImagen(eventoId);
+    if (errorMsg) {
+      setErrorImagen(errorMsg);
       return;
     }
+    if (url) {
+      await supabase.from("eventos").update({ url_imagen: url }).eq("id", eventoId);
+      setImagenFile(null);
+      setImagenPreview("");
+      setErrorImagen("");
+    }
+  };
 
-    // 3. Insertar fechas múltiples
-    if (fechas.length > 0) {
-      const fechasInsert = fechas.map((f) => ({
-        evento_id: evento.id,
+  // GUARDAR PESTAÑA 1
+  const guardarTab1 = async () => {
+    if (!titulo.trim()) { setError("El título es obligatorio."); return; }
+    if (!categoriaId) { setError("Selecciona una categoría."); return; }
+    if (!ciudad.trim()) { setError("La ciudad es obligatoria."); return; }
+    setSaving(true); setError(""); setErrorImagen("");
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setError("Sesión expirada."); setSaving(false); return; }
+
+    if (eventoId) {
+      // Ya existe — actualizar datos generales
+      await supabase.from("eventos").update({
+        titulo, descripcion, categoria_id: categoriaId,
+        ciudad, estado: estadoEvento, pais, venue, direccion, modalidad,
+        costo_minimo: costoMinimo, url_evento: urlEvento || null,
+        tiene_programa: tienePrograma, tiene_localidades: tieneLocalidades,
+      }).eq("id", eventoId);
+
+      // Imagen: operación separada, no bloquea el avance
+      if (imagenFile) {
+        const { url, errorMsg } = await subirImagen(eventoId);
+        if (errorMsg) {
+          setErrorImagen(errorMsg);
+        } else if (url) {
+          await supabase.from("eventos").update({ url_imagen: url }).eq("id", eventoId);
+          setImagenFile(null);
+          setImagenPreview("");
+        }
+      }
+    } else {
+      // Nuevo evento — INSERT sin imagen primero
+      const { data: ev, error: errEv } = await supabase.from("eventos").insert({
+        titulo, descripcion, categoria_id: categoriaId,
+        organizador_id: user.id,
+        ciudad, estado: estadoEvento, pais, venue, direccion, modalidad,
+        costo_minimo: costoMinimo, url_evento: urlEvento || null,
+        estado_publicacion: "borrador", exposicion: "basica",
+        tiene_programa: tienePrograma, tiene_localidades: tieneLocalidades,
+      }).select().single();
+
+      if (errEv || !ev) { setError("Error al guardar: " + (errEv?.message ?? "")); setSaving(false); return; }
+      setEventoId(ev.id);
+
+      // Imagen: operación separada, no bloquea el avance
+      if (imagenFile) {
+        const { url, errorMsg } = await subirImagen(ev.id);
+        if (errorMsg) {
+          setErrorImagen(errorMsg);
+        } else if (url) {
+          await supabase.from("eventos").update({ url_imagen: url }).eq("id", ev.id);
+          setImagenFile(null);
+          setImagenPreview("");
+        }
+      }
+    }
+
+    setSaving(false);
+    setTabActual(1); // avanza siempre, aunque la imagen haya fallado
+  };
+
+  // GUARDAR PESTAÑA 2
+  const guardarTab2 = async () => {
+    if (!eventoId) { setError("Guarda la información general primero."); return; }
+    if (!fechas[0].fecha) { setError("Agrega al menos una fecha."); return; }
+    setSaving(true); setError("");
+
+    await supabase.from("evento_fechas").delete().eq("evento_id", eventoId);
+    await supabase.from("evento_fechas").insert(
+      fechas.map(f => ({
+        evento_id: eventoId,
         fecha: f.fecha || null,
         hora_inicio: f.hora_inicio || null,
         hora_fin: f.hora_fin || null,
         activa: true,
-      }));
-      await supabase.from("evento_fechas").insert(fechasInsert);
-    }
+      }))
+    );
 
-    // 4. Insertar ext_conciertos si aplica
-    if (categoriaId === 2) {
+    const primeraFecha = fechas[0];
+    const ultimaFecha = fechas[fechas.length - 1];
+    await supabase.from("eventos").update({
+      fecha_inicio: primeraFecha.fecha || null,
+      fecha_fin: ultimaFecha.fecha || null,
+      hora_inicio: primeraFecha.hora_inicio || null,
+      venue: primeraFecha.venue || venue || null,
+    }).eq("id", eventoId);
+
+    setSaving(false);
+    setTabActual(2);
+  };
+
+  // GUARDAR PESTAÑA 3
+  const guardarTab3 = async () => {
+    if (!eventoId) { setError("Guarda la información general primero."); return; }
+    setSaving(true); setError("");
+
+    if (tipo === "concierto") {
+      await supabase.from("ext_conciertos").delete().eq("evento_id", eventoId);
       await supabase.from("ext_conciertos").insert({
-        evento_id: evento.id,
-        artistas,
+        evento_id: eventoId, artistas,
         hora_apertura_puertas: horaApertura || null,
         edad_minima: edadMinima ? parseInt(edadMinima) : null,
-        precio_general: precioGeneral,
-        precio_vip: precioVip,
+        precio_general: precioGeneral, precio_vip: precioVip,
         tiene_zona_familiar: tieneZonaFamiliar,
       });
     }
+    if (tipo === "retiro") {
+      await supabase.from("ext_retiros").delete().eq("evento_id", eventoId);
+      await supabase.from("ext_retiros").insert({
+        evento_id: eventoId,
+        cupo_maximo: cupoMaximo ? parseInt(cupoMaximo) : null,
+        precio_completo: precioCompleto,
+        incluye_hospedaje: incluyeHospedaje,
+        incluye_alimentacion: incluyeAlimentacion,
+        facilitador: facilitador || null,
+        requiere_inscripcion_previa: requiereInscripcion,
+      });
+    }
+    if (tipo === "conferencia") {
+      await supabase.from("ext_conferencias").delete().eq("evento_id", eventoId);
+      await supabase.from("ext_conferencias").insert({
+        evento_id: eventoId, ponentes, tematica,
+        capacidad_aforo: capacidadAforo ? parseInt(capacidadAforo) : null,
+        disponible_online: disponibleOnline,
+        url_transmision: urlTransmision || null,
+      });
+    }
+    if (tipo === "peregrinacion") {
+      await supabase.from("ext_peregrinaciones").delete().eq("evento_id", eventoId);
+      await supabase.from("ext_peregrinaciones").insert({
+        evento_id: eventoId, agencia: agencia || null,
+        incluye_vuelo: incluyeVuelo, incluye_hotel: incluyeHotel,
+        incluye_guia_espiritual: incluyeGuia,
+        duracion_dias: duracionDias ? parseInt(duracionDias) : null,
+        precio_por_persona: precioPorPersona,
+        cupo_maximo: cupoMaximo ? parseInt(cupoMaximo) : null,
+      });
+    }
 
-    router.push(`/portal/dashboard/eventos/${evento.id}`);
+    setSaving(false);
+    setTabActual(3);
   };
 
-  // Estilos reutilizables
-  const label: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: "#4a6278", marginBottom: 4, display: "block" };
-  const input: React.CSSProperties = { width: "100%", border: "0.5px solid #c8d8e8", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: "#1a2b3c", background: "#fff", outline: "none" };
+  // FINALIZAR
+  const finalizar = () => {
+    if (eventoId) router.push(`/portal/dashboard/eventos/${eventoId}`);
+  };
+
+  const agregarFecha = () => setFechas([...fechas, fechaVacia()]);
+  const quitarFecha = (i: number) => setFechas(fechas.filter((_, idx) => idx !== i));
+  const actualizarFecha = (i: number, campo: keyof Fecha, valor: string) => {
+    const n = [...fechas]; n[i] = { ...n[i], [campo]: valor }; setFechas(n);
+  };
+
+  const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 500, color: "#4a6278", marginBottom: 4, display: "block" };
+  const inp: React.CSSProperties = { width: "100%", border: "0.5px solid #c8d8e8", borderRadius: 8, padding: "8px 10px", fontSize: 13, color: "#1a2b3c", background: "#fff", outline: "none" };
   const card: React.CSSProperties = { background: "#fff", border: "0.5px solid #c8d8e8", borderRadius: 12, padding: 16, marginBottom: 16 };
-  const cardTitle: React.CSSProperties = { fontSize: 11, fontWeight: 500, color: "#4a6278", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.05em" };
-  const grid2: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 };
-  const grid3: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 };
+  const cardT: React.CSSProperties = { fontSize: 11, fontWeight: 500, color: "#4a6278", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.05em" };
+  const g2: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 };
+  const g3: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 };
+  const chk: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8 };
 
   return (
-    <div style={{ padding: 24, maxWidth: 900 }}>
+    <div style={{ padding: 24, maxWidth: 860, margin: "0 auto" }}>
       {/* Accent bar */}
       <div style={{ height: 3, background: "linear-gradient(90deg,#1a3a6b,#1a9b8c)", borderRadius: 2, marginBottom: 20 }} />
 
-      {/* Breadcrumb */}
-      <div style={{ fontSize: 12, color: "#4a6278", marginBottom: 10 }}>
-        <span style={{ color: "#1a6b8c", cursor: "pointer" }} onClick={() => router.push("/portal/dashboard")}>Eventos</span>
-        {" / "}Nuevo evento
-      </div>
-
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <span style={{ fontSize: 16, fontWeight: 500, color: "#1a2b3c" }}>Nuevo evento</span>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => router.push("/portal/dashboard")}
-            style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>
-            Cancelar
-          </button>
-          <button onClick={guardar} disabled={saving}
-            style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", border: "none", background: "#1a3a6b", color: "#fff", opacity: saving ? 0.6 : 1 }}>
-            {saving ? "Guardando..." : "Guardar evento"}
-          </button>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 600, color: "#1a2b3c" }}>Nuevo evento</div>
+          <div style={{ fontSize: 12, color: "#7a9ab0", marginTop: 2 }}>Completa las pestañas en orden. Cada una se guarda por separado.</div>
         </div>
+        <button onClick={() => router.back()}
+          style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>
+          ← Volver
+        </button>
       </div>
 
-      {error && (
-        <div style={{ background: "#FCEBEB", border: "0.5px solid #F09595", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#A32D2D", marginBottom: 16 }}>
-          {error}
-        </div>
-      )}
-
-      {/* Información principal */}
-      <div style={card}>
-        <div style={cardTitle}>Información principal</div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={label}>Título *</label>
-          <input style={input} value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Nombre del evento" />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={label}>Descripción</label>
-          <textarea style={{ ...input, minHeight: 80, resize: "vertical" }} value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción del evento" />
-        </div>
-        <div style={grid3}>
-          <div>
-            <label style={label}>Categoría *</label>
-            <select style={input} value={categoriaId} onChange={(e) => setCategoriaId(Number(e.target.value))}>
-              {CATEGORIAS.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={label}>Modalidad</label>
-            <select style={input} value={modalidad} onChange={(e) => setModalidad(e.target.value)}>
-              <option value="presencial">Presencial</option>
-              <option value="online">Online</option>
-              <option value="hibrido">Híbrido</option>
-            </select>
-          </div>
-          <div>
-            <label style={label}>Costo mínimo (MXN)</label>
-            <input style={input} type="number" min={0} value={costoMinimo} onChange={(e) => setCostoMinimo(Number(e.target.value))} />
-          </div>
-        </div>
-      </div>
-
-      {/* Ubicación */}
-      <div style={card}>
-        <div style={cardTitle}>Ubicación principal</div>
-        <div style={{ ...grid3, marginBottom: 12 }}>
-          <div>
-            <label style={label}>Ciudad *</label>
-            <input style={input} value={ciudad} onChange={(e) => setCiudad(e.target.value)} />
-          </div>
-          <div>
-            <label style={label}>Estado</label>
-            <input style={input} value={estado} onChange={(e) => setEstado(e.target.value)} />
-          </div>
-          <div>
-            <label style={label}>País</label>
-            <input style={input} value={pais} onChange={(e) => setPais(e.target.value)} />
-          </div>
-        </div>
-        <div style={grid2}>
-          <div>
-            <label style={label}>Venue</label>
-            <input style={input} value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="Nombre del lugar" />
-          </div>
-          <div>
-            <label style={label}>Dirección</label>
-            <input style={input} value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Dirección completa" />
-          </div>
-        </div>
-      </div>
-
-      {/* Fechas */}
-      <div style={card}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <span style={cardTitle as React.CSSProperties}>Fechas y funciones</span>
-          <button onClick={agregarFecha}
-            style={{ fontSize: 12, padding: "4px 10px", borderRadius: 8, border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a3a6b", cursor: "pointer" }}>
-            + Agregar fecha
-          </button>
-        </div>
-        {fechas.map((f, i) => (
-          <div key={i} style={{ background: "#f5f9fd", borderRadius: 8, padding: 12, marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: "#1a3a6b" }}>Fecha {i + 1}</span>
-              {fechas.length > 1 && (
-                <button onClick={() => quitarFecha(i)}
-                  style={{ fontSize: 11, color: "#A32D2D", background: "none", border: "none", cursor: "pointer" }}>
-                  Quitar
-                </button>
-              )}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
-              <div>
-                <label style={label}>Fecha *</label>
-                <input style={input} type="date" value={f.fecha} onChange={(e) => actualizarFecha(i, "fecha", e.target.value)} />
-              </div>
-              <div>
-                <label style={label}>Hora inicio</label>
-                <input style={input} type="time" value={f.hora_inicio} onChange={(e) => actualizarFecha(i, "hora_inicio", e.target.value)} />
-              </div>
-              <div>
-                <label style={label}>Hora fin</label>
-                <input style={input} type="time" value={f.hora_fin} onChange={(e) => actualizarFecha(i, "hora_fin", e.target.value)} />
-              </div>
-            </div>
-            <div style={grid2}>
-              <div>
-                <label style={label}>Ciudad de esta función</label>
-                <input style={input} value={f.ciudad} onChange={(e) => actualizarFecha(i, "ciudad", e.target.value)} placeholder="Ciudad" />
-              </div>
-              <div>
-                <label style={label}>Venue de esta función</label>
-                <input style={input} value={f.venue} onChange={(e) => actualizarFecha(i, "venue", e.target.value)} placeholder="Venue" />
-              </div>
-            </div>
+      {/* Tabs */}
+      <div style={{ display: "flex", borderBottom: "0.5px solid #c8d8e8", marginBottom: 20 }}>
+        {TABS.map((t, i) => (
+          <div key={i} style={{
+            padding: "8px 16px", fontSize: 13, cursor: "pointer",
+            color: tabActual === i ? "#1a3a6b" : "#4a6278",
+            borderBottom: tabActual === i ? "2px solid #1a3a6b" : "2px solid transparent",
+            fontWeight: tabActual === i ? 500 : 400,
+            marginBottom: -0.5,
+          }}>
+            {t}
           </div>
         ))}
       </div>
 
-      {/* Detalles concierto — solo si categoría es Conciertos */}
-      {categoriaId === 2 && (
-        <div style={card}>
-          <div style={cardTitle}>Detalles del concierto</div>
-          <div style={{ marginBottom: 12 }}>
-            <label style={label}>Artistas (separados por coma)</label>
-            <input style={input} value={artistas} onChange={(e) => setArtistas(e.target.value)} placeholder="Artista 1, Artista 2" />
-          </div>
-          <div style={{ ...grid3, marginBottom: 12 }}>
-            <div>
-              <label style={label}>Apertura de puertas</label>
-              <input style={input} type="time" value={horaApertura} onChange={(e) => setHoraApertura(e.target.value)} />
-            </div>
-            <div>
-              <label style={label}>Precio general (MXN)</label>
-              <input style={input} type="number" min={0} value={precioGeneral} onChange={(e) => setPrecioGeneral(Number(e.target.value))} />
-            </div>
-            <div>
-              <label style={label}>Precio preferente / VIP (MXN)</label>
-              <input style={input} type="number" min={0} value={precioVip} onChange={(e) => setPrecioVip(Number(e.target.value))} />
-            </div>
-          </div>
-          <div style={grid2}>
-            <div>
-              <label style={label}>Edad mínima (dejar vacío si no aplica)</label>
-              <input style={input} type="number" min={0} value={edadMinima} onChange={(e) => setEdadMinima(e.target.value)} placeholder="Sin restricción" />
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 20 }}>
-              <input type="checkbox" id="zonaFamiliar" checked={tieneZonaFamiliar} onChange={(e) => setTieneZonaFamiliar(e.target.checked)}
-                style={{ width: 16, height: 16, cursor: "pointer" }} />
-              <label htmlFor="zonaFamiliar" style={{ fontSize: 13, color: "#1a2b3c", cursor: "pointer" }}>Tiene zona familiar</label>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Enlace externo */}
-      <div style={card}>
-        <div style={cardTitle}>Enlace externo</div>
-        <label style={label}>Sitio oficial del evento</label>
-        <input style={input} value={urlEvento} onChange={(e) => setUrlEvento(e.target.value)} placeholder="https://..." />
-      </div>
-
-      {/* Botones finales */}
+      {/* Error general */}
       {error && (
-        <div style={{ background: "#FCEBEB", border: "0.5px solid #F09595", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#A32D2D", marginBottom: 16 }}>
+        <div style={{ padding: "10px 14px", background: "#FCEBEB", border: "0.5px solid #F09595", borderRadius: 8, fontSize: 13, color: "#A32D2D", marginBottom: 16 }}>
           {error}
         </div>
       )}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingBottom: 32 }}>
-        <button onClick={() => router.push("/portal/dashboard")}
-          style={{ padding: "7px 14px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>
-          Cancelar
-        </button>
-        <button onClick={guardar} disabled={saving}
-          style={{ padding: "7px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#1a3a6b", color: "#fff", opacity: saving ? 0.6 : 1 }}>
-          {saving ? "Guardando..." : "Guardar evento"}
-        </button>
-      </div>
+
+      {/* PESTAÑA 1 — Información general */}
+      {tabActual === 0 && (
+        <>
+          <div style={card}>
+            <div style={cardT}>Información principal</div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={lbl}>Título del evento *</label>
+              <input style={inp} value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Nombre oficial del evento" />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={lbl}>Categoría *</label>
+              <select style={inp} value={categoriaId} onChange={e => onCategoriaChange(Number(e.target.value))}>
+                <option value="">Selecciona una categoría</option>
+                {grupos.map(g => (
+                  <optgroup key={g.id} label={g.nombre}>
+                    {g.subcategorias.map(s => (
+                      <option key={s.id} value={s.id}>{s.nombre}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              {nombreCatPadre && (
+                <div style={{ fontSize: 11, color: "#7a9ab0", marginTop: 4 }}>Categoría padre: {nombreCatPadre}</div>
+              )}
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={lbl}>Descripción</label>
+              <textarea style={{ ...inp, minHeight: 80, resize: "vertical" }} value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Describe el evento..." />
+            </div>
+          </div>
+
+          <div style={card}>
+            <div style={cardT}>Ubicación</div>
+            <div style={{ ...g3, marginBottom: 12 }}>
+              <div><label style={lbl}>Ciudad *</label><input style={inp} value={ciudad} onChange={e => setCiudad(e.target.value)} placeholder="Ciudad" /></div>
+              <div><label style={lbl}>Estado</label><input style={inp} value={estadoEvento} onChange={e => setEstadoEvento(e.target.value)} placeholder="Estado" /></div>
+              <div><label style={lbl}>País</label><input style={inp} value={pais} onChange={e => setPais(e.target.value)} /></div>
+            </div>
+            <div style={g2}>
+              <div><label style={lbl}>Venue / Sede</label><input style={inp} value={venue} onChange={e => setVenue(e.target.value)} placeholder="Nombre del lugar" /></div>
+              <div><label style={lbl}>Dirección</label><input style={inp} value={direccion} onChange={e => setDireccion(e.target.value)} placeholder="Dirección completa" /></div>
+            </div>
+          </div>
+
+          <div style={card}>
+            <div style={cardT}>Formato y costo</div>
+            <div style={g3}>
+              <div>
+                <label style={lbl}>Modalidad</label>
+                <select style={inp} value={modalidad} onChange={e => setModalidad(e.target.value)}>
+                  <option value="presencial">Presencial</option>
+                  <option value="online">Online</option>
+                  <option value="hibrido">Híbrido</option>
+                </select>
+              </div>
+              <div><label style={lbl}>Costo mínimo (MXN)</label><input style={inp} type="number" min={0} value={costoMinimo} onChange={e => setCostoMinimo(Number(e.target.value))} /></div>
+              <div><label style={lbl}>Sitio oficial del evento</label><input style={inp} value={urlEvento} onChange={e => setUrlEvento(e.target.value)} placeholder="https://..." /></div>
+            </div>
+          </div>
+
+          <div style={card}>
+            <div style={cardT}>Imagen del evento</div>
+            <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+              {/* Preview */}
+              <div
+                onClick={() => fileRef.current?.click()}
+                style={{
+                  width: 160, height: 120, borderRadius: 8, flexShrink: 0, cursor: "pointer",
+                  border: errorImagen ? "1.5px solid #F09595" : "0.5px dashed #b5d4f4",
+                  background: "#dff0fb", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                {imagenPreview
+                  ? <img src={imagenPreview} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <span style={{ fontSize: 11, color: "#4a6278", textAlign: "center", padding: 8 }}>Clic para seleccionar imagen</span>
+                }
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: "#4a6278", marginBottom: 8 }}>
+                  Proporción recomendada: 4:3. Formatos: JPG, PNG, WEBP.
+                </div>
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}
+                >
+                  {imagenFile ? "Cambiar imagen" : "Seleccionar imagen"}
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onImagenChange} />
+
+                {/* NUEVO: error de imagen visible */}
+                {errorImagen && (
+                  <div style={{ marginTop: 10, padding: "8px 12px", background: "#FCEBEB", border: "0.5px solid #F09595", borderRadius: 8, fontSize: 12, color: "#A32D2D" }}>
+                    <div style={{ marginBottom: 6 }}>{errorImagen}</div>
+                    {eventoId && imagenFile && (
+                      <button
+                        onClick={reintentarSubidaImagen}
+                        disabled={subiendoImagen}
+                        style={{ padding: "4px 12px", borderRadius: 6, fontSize: 12, cursor: "pointer", border: "none", background: "#A32D2D", color: "#fff", opacity: subiendoImagen ? 0.6 : 1 }}
+                      >
+                        {subiendoImagen ? "Subiendo..." : "Reintentar subida"}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {subiendoImagen && !errorImagen && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#1a9b8c" }}>Subiendo imagen...</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div style={card}>
+            <div style={cardT}>Configuración de pestañas</div>
+            <div style={{ fontSize: 12, color: "#4a6278", marginBottom: 12 }}>
+              Activa las pestañas adicionales que aplican a este evento. Solo aparecerán si las habilitas aquí.
+            </div>
+            <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input type="checkbox" id="tienePrograma" checked={tienePrograma} onChange={e => setTienePrograma(e.target.checked)} style={{ width: 16, height: 16 }} />
+                <label htmlFor="tienePrograma" style={{ fontSize: 13, color: "#1a2b3c", cursor: "pointer" }}>
+                  Tiene programa — agenda de sesiones, artistas o expositores
+                </label>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input type="checkbox" id="tieneLocalidades" checked={tieneLocalidades} onChange={e => setTieneLocalidades(e.target.checked)} style={{ width: 16, height: 16 }} />
+                <label htmlFor="tieneLocalidades" style={{ fontSize: 13, color: "#1a2b3c", cursor: "pointer" }}>
+                  Tiene localidades — zonas, asientos o tipos de acceso con precio
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", paddingBottom: 32 }}>
+            <button onClick={guardarTab1} disabled={saving}
+              style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#1a3a6b", color: "#fff", opacity: saving ? 0.6 : 1 }}>
+              {saving ? "Guardando..." : "Guardar y continuar →"}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* PESTAÑA 2 — Fechas y sedes */}
+      {tabActual === 1 && (
+        <>
+          <div style={card}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={cardT}>Fechas del evento</div>
+              <button onClick={agregarFecha}
+                style={{ padding: "4px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", border: "0.5px solid #1a3a6b", background: "#fff", color: "#1a3a6b" }}>
+                + Agregar fecha
+              </button>
+            </div>
+            {fechas.map((f, i) => (
+              <div key={i} style={{ padding: "12px 0", borderBottom: "0.5px solid #e8f0f8" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: "#4a6278" }}>Fecha {i + 1}</span>
+                  {fechas.length > 1 && (
+                    <button onClick={() => quitarFecha(i)}
+                      style={{ padding: "2px 8px", borderRadius: 6, fontSize: 11, cursor: "pointer", border: "0.5px solid #F09595", background: "#FCEBEB", color: "#A32D2D" }}>
+                      Quitar
+                    </button>
+                  )}
+                </div>
+                <div style={{ ...g3, marginBottom: 8 }}>
+                  <div><label style={lbl}>Fecha *</label><input style={inp} type="date" value={f.fecha} onChange={e => actualizarFecha(i, "fecha", e.target.value)} /></div>
+                  <div><label style={lbl}>Hora inicio</label><input style={inp} type="time" value={f.hora_inicio} onChange={e => actualizarFecha(i, "hora_inicio", e.target.value)} /></div>
+                  <div><label style={lbl}>Hora fin</label><input style={inp} type="time" value={f.hora_fin} onChange={e => actualizarFecha(i, "hora_fin", e.target.value)} /></div>
+                </div>
+                <div style={g3}>
+                  <div><label style={lbl}>Ciudad</label><input style={inp} value={f.ciudad} onChange={e => actualizarFecha(i, "ciudad", e.target.value)} placeholder={ciudad} /></div>
+                  <div><label style={lbl}>Estado</label><input style={inp} value={f.estado} onChange={e => actualizarFecha(i, "estado", e.target.value)} placeholder={estadoEvento} /></div>
+                  <div><label style={lbl}>Venue / Sede</label><input style={inp} value={f.venue} onChange={e => actualizarFecha(i, "venue", e.target.value)} placeholder={venue} /></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 32 }}>
+            <button onClick={() => setTabActual(0)}
+              style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>
+              ← Anterior
+            </button>
+            <button onClick={guardarTab2} disabled={saving}
+              style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#1a3a6b", color: "#fff", opacity: saving ? 0.6 : 1 }}>
+              {saving ? "Guardando..." : "Guardar y continuar →"}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* PESTAÑA 3 — Detalles por tipo */}
+      {tabActual === 2 && (
+        <>
+          <div style={{ marginBottom: 16, padding: "10px 14px", background: "#dff0fb", borderRadius: 8, fontSize: 13, color: "#185FA5" }}>
+            Completando detalles para: <strong>{subcatNombre}</strong> — {TIPO_LABEL[tipo]}
+          </div>
+
+          {tipo === "concierto" && (
+            <div style={card}>
+              <div style={cardT}>Detalles del concierto</div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={lbl}>Artistas (separados por coma)</label>
+                <input style={inp} value={artistas} onChange={e => setArtistas(e.target.value)} placeholder="Artista 1, Artista 2" />
+              </div>
+              <div style={{ ...g3, marginBottom: 12 }}>
+                <div><label style={lbl}>Apertura de puertas</label><input style={inp} type="time" value={horaApertura} onChange={e => setHoraApertura(e.target.value)} /></div>
+                <div><label style={lbl}>Precio general (MXN)</label><input style={inp} type="number" min={0} value={precioGeneral} onChange={e => setPrecioGeneral(Number(e.target.value))} /></div>
+                <div><label style={lbl}>Precio VIP (MXN)</label><input style={inp} type="number" min={0} value={precioVip} onChange={e => setPrecioVip(Number(e.target.value))} /></div>
+              </div>
+              <div style={g2}>
+                <div><label style={lbl}>Edad mínima</label><input style={inp} type="number" min={0} value={edadMinima} onChange={e => setEdadMinima(e.target.value)} placeholder="Sin restricción" /></div>
+                <div style={chk}>
+                  <input type="checkbox" id="zf" checked={tieneZonaFamiliar} onChange={e => setTieneZonaFamiliar(e.target.checked)} style={{ width: 16, height: 16 }} />
+                  <label htmlFor="zf" style={{ fontSize: 13, color: "#1a2b3c", cursor: "pointer" }}>Tiene zona familiar</label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {tipo === "retiro" && (
+            <div style={card}>
+              <div style={cardT}>Detalles del retiro</div>
+              <div style={{ ...g3, marginBottom: 12 }}>
+                <div><label style={lbl}>Cupo máximo</label><input style={inp} type="number" min={0} value={cupoMaximo} onChange={e => setCupoMaximo(e.target.value)} /></div>
+                <div><label style={lbl}>Precio completo (MXN)</label><input style={inp} type="number" min={0} value={precioCompleto} onChange={e => setPrecioCompleto(Number(e.target.value))} /></div>
+                <div><label style={lbl}>Facilitador espiritual</label><input style={inp} value={facilitador} onChange={e => setFacilitador(e.target.value)} /></div>
+              </div>
+              <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                {[
+                  { id: "hosp", label: "Incluye hospedaje", val: incluyeHospedaje, set: setIncluyeHospedaje },
+                  { id: "alim", label: "Incluye alimentación", val: incluyeAlimentacion, set: setIncluyeAlimentacion },
+                  { id: "insc", label: "Requiere inscripción previa", val: requiereInscripcion, set: setRequiereInscripcion },
+                ].map(c => (
+                  <div key={c.id} style={chk}>
+                    <input type="checkbox" id={c.id} checked={c.val} onChange={e => c.set(e.target.checked)} style={{ width: 16, height: 16 }} />
+                    <label htmlFor={c.id} style={{ fontSize: 13, color: "#1a2b3c", cursor: "pointer" }}>{c.label}</label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tipo === "conferencia" && (
+            <div style={card}>
+              <div style={cardT}>Detalles de la conferencia</div>
+              <div style={{ marginBottom: 12 }}><label style={lbl}>Ponentes (separados por coma)</label><input style={inp} value={ponentes} onChange={e => setPonentes(e.target.value)} /></div>
+              <div style={{ marginBottom: 12 }}><label style={lbl}>Temática central</label><input style={inp} value={tematica} onChange={e => setTematica(e.target.value)} /></div>
+              <div style={{ ...g2, marginBottom: 12 }}>
+                <div><label style={lbl}>Capacidad de aforo</label><input style={inp} type="number" min={0} value={capacidadAforo} onChange={e => setCapacidadAforo(e.target.value)} /></div>
+                <div><label style={lbl}>URL transmisión online</label><input style={inp} value={urlTransmision} onChange={e => setUrlTransmision(e.target.value)} placeholder="https://..." /></div>
+              </div>
+              <div style={chk}>
+                <input type="checkbox" id="online" checked={disponibleOnline} onChange={e => setDisponibleOnline(e.target.checked)} style={{ width: 16, height: 16 }} />
+                <label htmlFor="online" style={{ fontSize: 13, color: "#1a2b3c", cursor: "pointer" }}>Disponible en línea</label>
+              </div>
+            </div>
+          )}
+
+          {tipo === "peregrinacion" && (
+            <div style={card}>
+              <div style={cardT}>Detalles de la peregrinación</div>
+              <div style={{ ...g3, marginBottom: 12 }}>
+                <div><label style={lbl}>Agencia organizadora</label><input style={inp} value={agencia} onChange={e => setAgencia(e.target.value)} /></div>
+                <div><label style={lbl}>Duración (días)</label><input style={inp} type="number" min={1} value={duracionDias} onChange={e => setDuracionDias(e.target.value)} /></div>
+                <div><label style={lbl}>Precio por persona (MXN)</label><input style={inp} type="number" min={0} value={precioPorPersona} onChange={e => setPrecioPorPersona(Number(e.target.value))} /></div>
+              </div>
+              <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+                {[
+                  { id: "vuelo", label: "Incluye vuelo", val: incluyeVuelo, set: setIncluyeVuelo },
+                  { id: "hotel", label: "Incluye hotel", val: incluyeHotel, set: setIncluyeHotel },
+                  { id: "guia", label: "Incluye guía espiritual", val: incluyeGuia, set: setIncluyeGuia },
+                ].map(c => (
+                  <div key={c.id} style={chk}>
+                    <input type="checkbox" id={c.id} checked={c.val} onChange={e => c.set(e.target.checked)} style={{ width: 16, height: 16 }} />
+                    <label htmlFor={c.id} style={{ fontSize: 13, color: "#1a2b3c", cursor: "pointer" }}>{c.label}</label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tipo === "general" && (
+            <div style={card}>
+              <div style={{ fontSize: 13, color: "#4a6278", textAlign: "center", padding: 24 }}>
+                Esta categoría no requiere campos adicionales.
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 32 }}>
+            <button onClick={() => setTabActual(1)}
+              style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>
+              ← Anterior
+            </button>
+            <button onClick={guardarTab3} disabled={saving}
+              style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#1a3a6b", color: "#fff", opacity: saving ? 0.6 : 1 }}>
+              {saving ? "Guardando..." : "Guardar y continuar →"}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* PESTAÑA 4 — Corresponsales */}
+      {tabActual === 3 && (
+        <>
+          <div style={card}>
+            <div style={cardT}>Corresponsales</div>
+            <div style={{ fontSize: 13, color: "#4a6278", textAlign: "center", padding: 24 }}>
+              La asignación de corresponsales estará disponible próximamente.<br />
+              <span style={{ fontSize: 12, color: "#7a9ab0" }}>Puedes finalizar el evento y asignar corresponsales desde el detalle del evento.</span>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 32 }}>
+            <button onClick={() => setTabActual(2)}
+              style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>
+              ← Anterior
+            </button>
+            <button onClick={finalizar}
+              style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#0F6E56", color: "#fff" }}>
+              Finalizar y ver evento →
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

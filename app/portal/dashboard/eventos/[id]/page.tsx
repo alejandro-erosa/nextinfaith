@@ -22,6 +22,8 @@ type Evento = {
   url_evento: string;
   estado_publicacion: string;
   exposicion: string;
+  tiene_programa: boolean;
+  tiene_localidades: boolean;
   created_at: string;
   updated_at: string;
   categorias: { id: number; nombre: string } | null;
@@ -54,6 +56,18 @@ const BADGE_COBERTURA: Record<string, { bg: string; color: string }> = {
   completado:   { bg: "#E1F5EE", color: "#0F6E56" },
 };
 
+const ESTADOS_OPCIONES = [
+  { value: "borrador",    label: "Borrador" },
+  { value: "en_revision", label: "En revisión" },
+  { value: "rechazado",   label: "Rechazado" },
+  { value: "publicado",   label: "Publicado" },
+];
+
+const EXPOSICION_OPCIONES = [
+  { value: "basica",   label: "Básica" },
+  { value: "completa", label: "Completa" },
+];
+
 function Badge({ value, map }: { value: string; map: Record<string, { bg: string; color: string }> }) {
   const s = map[value] ?? { bg: "#F1EFE8", color: "#5F5E5A" };
   return (
@@ -81,19 +95,6 @@ function Field({ label, value, color }: { label: string; value: React.ReactNode;
   );
 }
 
-function Btn({ label, onClick, variant = "default" }: { label: string; onClick: () => void; variant?: "default" | "success" | "danger" }) {
-  const styles: Record<string, React.CSSProperties> = {
-    default:  { background: "#fff", color: "#1a2b3c", border: "0.5px solid #c8d8e8" },
-    success:  { background: "#0F6E56", color: "#fff", border: "0.5px solid #0F6E56" },
-    danger:   { background: "#FCEBEB", color: "#A32D2D", border: "0.5px solid #F09595" },
-  };
-  return (
-    <button onClick={onClick} style={{ ...styles[variant], padding: "6px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", whiteSpace: "nowrap" }}>
-      {label}
-    </button>
-  );
-}
-
 export default function EventoDetallePage() {
   const router = useRouter();
   const params = useParams();
@@ -106,10 +107,23 @@ export default function EventoDetallePage() {
   const [tickets, setTickets] = useState<TicketType[]>([]);
   const [corresponsales, setCorresponsales] = useState<Corresponsal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [savingDecision, setSavingDecision] = useState(false);
+  const [decisionEstado, setDecisionEstado] = useState("");
+  const [decisionExposicion, setDecisionExposicion] = useState("");
 
   useEffect(() => {
     if (id) cargarEvento();
   }, [id]);
+
+  // Si el tab activo queda oculto por los flags del evento, resetea a general
+  useEffect(() => {
+    if (!evento) return;
+    if (tab === "programa" && !evento.tiene_programa) setTab("general");
+    if (tab === "localidades" && !evento.tiene_localidades) setTab("general");
+    // Inicializar decisión con los valores actuales del evento
+    setDecisionEstado(evento.estado_publicacion);
+    setDecisionExposicion(evento.exposicion ?? "basica");
+  }, [evento]);
 
   const cargarEvento = async () => {
     setLoading(true);
@@ -136,21 +150,38 @@ export default function EventoDetallePage() {
     setLoading(false);
   };
 
-  const cambiarEstado = async (nuevoEstado: string) => {
-    await supabase.from("eventos").update({ estado_publicacion: nuevoEstado }).eq("id", id);
+  const guardarDecision = async () => {
+    setSavingDecision(true);
+    await supabase.from("eventos").update({
+      estado_publicacion: decisionEstado,
+      exposicion: decisionExposicion,
+    }).eq("id", id);
     await cargarEvento();
-  };
-
-  const cambiarExposicion = async (nueva: string) => {
-    await supabase.from("eventos").update({ exposicion: nueva }).eq("id", id);
-    await cargarEvento();
+    setSavingDecision(false);
   };
 
   const formatFecha = (f: string) => f ? new Date(f).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "—";
   const formatMXN = (n: number) => n != null ? `$${n.toLocaleString("es-MX")} MXN` : "—";
 
-  const tabs = ["general", "programa", "asientos", "corresponsales"];
-  const tabLabels: Record<string, string> = { general: "General", programa: "Programa", asientos: "Asientos", corresponsales: "Corresponsales" };
+  // Tabs dinámicas según flags del evento
+  const tabsVisibles = evento
+    ? [
+        { key: "general", label: "General" },
+        ...(evento.tiene_programa ? [{ key: "programa", label: "Programa" }] : []),
+        ...(evento.tiene_localidades ? [{ key: "localidades", label: "Localidades" }] : []),
+        { key: "corresponsales", label: "Corresponsales" },
+      ]
+    : [{ key: "general", label: "General" }];
+
+  const radioStyle = (selected: boolean): React.CSSProperties => ({
+    display: "flex", alignItems: "center", gap: 6, padding: "5px 10px",
+    borderRadius: 8, cursor: "pointer", fontSize: 12,
+    border: selected ? "1.5px solid #1a3a6b" : "0.5px solid #c8d8e8",
+    background: selected ? "#eef3fb" : "#fff",
+    color: selected ? "#1a3a6b" : "#4a6278",
+    fontWeight: selected ? 500 : 400,
+    userSelect: "none" as const,
+  });
 
   if (loading) return (
     <div style={{ padding: 24 }}>
@@ -176,37 +207,29 @@ export default function EventoDetallePage() {
         {" / "}{evento.titulo}
       </div>
 
-      {/* Header */}
+      {/* Header — solo título y badges, sin botones de acción */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
           <span style={{ fontSize: 17, fontWeight: 500, color: "#1a2b3c" }}>{evento.titulo}</span>
           <Badge value={evento.estado_publicacion} map={BADGE_ESTADO} />
           <Badge value={evento.exposicion ?? "basica"} map={BADGE_EXPO} />
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <span style={{ fontSize: 12, color: "#4a6278" }}>
-            {evento.categorias?.nombre} · {evento.ciudad}, {evento.estado} · Creado {formatFecha(evento.created_at)}
-          </span>
-          <div style={{ display: "flex", gap: 8 }}>
-            <Btn label="Rechazar" onClick={() => cambiarEstado("rechazado")} variant="danger" />
-            <Btn label={evento.exposicion === "completa" ? "Bajar a básica" : "Subir a completa"}
-              onClick={() => cambiarExposicion(evento.exposicion === "completa" ? "basica" : "completa")} />
-            <Btn label="Aprobar" onClick={() => cambiarEstado("publicado")} variant="success" />
-          </div>
+        <div style={{ fontSize: 12, color: "#4a6278" }}>
+          {evento.categorias?.nombre} · {evento.ciudad}, {evento.estado} · Creado {formatFecha(evento.created_at)}
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs dinámicas */}
       <div style={{ display: "flex", borderBottom: "0.5px solid #c8d8e8", marginBottom: 20 }}>
-        {tabs.map((t) => (
-          <div key={t} onClick={() => setTab(t)} style={{
+        {tabsVisibles.map((t) => (
+          <div key={t.key} onClick={() => setTab(t.key)} style={{
             padding: "8px 16px", fontSize: 13, cursor: "pointer",
-            color: tab === t ? "#1a3a6b" : "#4a6278",
-            borderBottom: tab === t ? "2px solid #1a3a6b" : "2px solid transparent",
-            fontWeight: tab === t ? 500 : 400,
+            color: tab === t.key ? "#1a3a6b" : "#4a6278",
+            borderBottom: tab === t.key ? "2px solid #1a3a6b" : "2px solid transparent",
+            fontWeight: tab === t.key ? 500 : 400,
             marginBottom: -0.5,
           }}>
-            {tabLabels[t]}
+            {t.label}
           </div>
         ))}
       </div>
@@ -237,7 +260,7 @@ export default function EventoDetallePage() {
                 </div>
               ))}
             </Card>
-            <Card title="Organizador">
+            <Card title="Capturado por">
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 <Field label="Nombre" value={evento.profiles ? `${evento.profiles.nombre} ${evento.profiles.apellido}` : "—"} />
                 <Field label="Revisado por" value={evento.revisado ? `${evento.revisado.nombre} ${evento.revisado.apellido}` : "—"} />
@@ -262,10 +285,57 @@ export default function EventoDetallePage() {
                   : "—"
               } />
             </Card>
+
+            {/* Control editorial — radio buttons */}
             <Card title="Control editorial">
-              <Field label="Estado publicación" value={<Badge value={evento.estado_publicacion} map={BADGE_ESTADO} />} />
-              <div style={{ marginTop: 8 }}>
-                <Field label="Exposición" value={<Badge value={evento.exposicion ?? "basica"} map={BADGE_EXPO} />} />
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, color: "#7a9ab0", marginBottom: 8 }}>Estado de publicación</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {ESTADOS_OPCIONES.map(op => (
+                    <div key={op.value} style={radioStyle(decisionEstado === op.value)} onClick={() => setDecisionEstado(op.value)}>
+                      <div style={{
+                        width: 14, height: 14, borderRadius: "50%", flexShrink: 0,
+                        border: decisionEstado === op.value ? "4px solid #1a3a6b" : "1.5px solid #b5d4f4",
+                        background: "#fff",
+                      }} />
+                      {op.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, color: "#7a9ab0", marginBottom: 8 }}>Exposición</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {EXPOSICION_OPCIONES.map(op => (
+                    <div key={op.value} style={{ ...radioStyle(decisionExposicion === op.value), flex: 1, justifyContent: "center" }} onClick={() => setDecisionExposicion(op.value)}>
+                      <div style={{
+                        width: 14, height: 14, borderRadius: "50%", flexShrink: 0,
+                        border: decisionExposicion === op.value ? "4px solid #1a3a6b" : "1.5px solid #b5d4f4",
+                        background: "#fff",
+                      }} />
+                      {op.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={guardarDecision}
+                disabled={savingDecision}
+                style={{
+                  width: "100%", padding: "8px 0", borderRadius: 8, fontSize: 13,
+                  cursor: savingDecision ? "not-allowed" : "pointer",
+                  border: "none", background: "#1a3a6b", color: "#fff",
+                  opacity: savingDecision ? 0.6 : 1, fontWeight: 500,
+                }}
+              >
+                {savingDecision ? "Guardando..." : "Guardar decisión"}
+              </button>
+
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 4 }}>
+                <Field label="Tiene programa" value={evento.tiene_programa ? "Sí" : "No"} color={evento.tiene_programa ? "#0F6E56" : undefined} />
+                <Field label="Tiene localidades" value={evento.tiene_localidades ? "Sí" : "No"} color={evento.tiene_localidades ? "#0F6E56" : undefined} />
               </div>
             </Card>
           </div>
@@ -273,7 +343,7 @@ export default function EventoDetallePage() {
       )}
 
       {/* Tab: Programa */}
-      {tab === "programa" && (
+      {tab === "programa" && evento.tiene_programa && (
         <div>
           <Card title="Artistas y ministerios">
             {artista?.artistas ? (
@@ -286,11 +356,11 @@ export default function EventoDetallePage() {
                 </div>
               ))
             ) : (
-              <div style={{ fontSize: 12, color: "#7a9ab0" }}>Sin artistas registrados.</div>
+              <div style={{ fontSize: 12, color: "#7a9ab0" }}>Sin programa registrado.</div>
             )}
           </Card>
           {artista && (
-            <Card title="Detalles del concierto">
+            <Card title="Detalles adicionales">
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 <Field label="Apertura de puertas" value={artista.hora_apertura_puertas ?? "—"} />
                 <Field label="Edad mínima" value={artista.edad_minima ? `${artista.edad_minima} años` : "Sin restricción"} />
@@ -301,12 +371,12 @@ export default function EventoDetallePage() {
         </div>
       )}
 
-      {/* Tab: Asientos */}
-      {tab === "asientos" && (
+      {/* Tab: Localidades */}
+      {tab === "localidades" && evento.tiene_localidades && (
         <div>
           <Card title="Zonas y precios">
             {zonas.length === 0 ? (
-              <div style={{ fontSize: 12, color: "#7a9ab0" }}>Sin zonas registradas.</div>
+              <div style={{ fontSize: 12, color: "#7a9ab0" }}>Sin localidades registradas.</div>
             ) : zonas.map((z) => {
               const zTickets = tickets.filter((t) => t.zone_id === z.id);
               return (
@@ -341,7 +411,7 @@ export default function EventoDetallePage() {
             ) : corresponsales.map((c) => (
               <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "0.5px solid #e8f0f8" }}>
                 <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#1a9b8c", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 500, color: "#fff", flexShrink: 0 }}>
-                  {c.nombre.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                  {c.nombre.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
                 </div>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500, color: "#1a2b3c" }}>{c.nombre}</div>
