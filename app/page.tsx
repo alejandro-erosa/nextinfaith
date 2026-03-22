@@ -3,168 +3,218 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { supabase } from "./lib/supabase";
 
-type EventoCarrusel = {
-  categoria: string;
-  titulo: string;
-  url_imagen: string | null;
+type CategoriaPadre = {
   id: number;
+  nombre: string;
+  slug: string;
 };
 
-const CATEGORIAS = [
-  { name: "Retiros",        dbName: "Retiros",              color: "#1a3a6b", light: "#dff0fb" },
-  { name: "Conciertos",     dbName: "Conciertos y Alabanza",color: "#1a9b8c", light: "#d0f0ec" },
-  { name: "Conferencias",   dbName: "Conferencias",         color: "#4aa8d8", light: "#dff0fb" },
-  { name: "Peregrinaciones",dbName: "Peregrinaciones",      color: "#e8a020", light: "#fdf3dc" },
-  { name: "Juveniles",      dbName: "Eventos Juveniles",    color: "#1a3a6b", light: "#dff0fb" },
-  { name: "Masivos",        dbName: "Eventos Masivos",      color: "#1a9b8c", light: "#d0f0ec" },
+type EventoCarrusel = {
+  id: number;
+  titulo: string;
+  url_imagen: string | null;
+};
+
+const COLORES = [
+  "#1a3a6b", "#1a9b8c", "#4aa8d8", "#e8a020", "#1a6b8c", "#2d6a2d"
 ];
 
 export default function Home() {
   const [menuAbierto, setMenuAbierto] = useState(false);
-  const [eventosCarrusel, setEventosCarrusel] = useState<Record<string, EventoCarrusel>>({});
+  const [usuarioNombre, setUsuarioNombre] = useState<string | null>(null);
+  const [categorias, setCategorias] = useState<CategoriaPadre[]>([]);
+  const [eventosMap, setEventosMap] = useState<Record<number, EventoCarrusel>>({});
   const carruselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    cargarEventosCarrusel();
+    verificarSesion();
+    cargarCarrusel();
   }, []);
 
-  useEffect(() => {
-    const el = carruselRef.current;
-    if (!el) return;
-    const interval = setInterval(() => {
-      if (el.scrollLeft + el.clientWidth >= el.scrollWidth) {
-        el.scrollLeft = 0;
-      } else {
-        el.scrollLeft += 240;
-      }
-    }, 2500);
-    return () => clearInterval(interval);
-  }, []);
+  const verificarSesion = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: perfil } = await supabase
+      .from("profiles")
+      .select("nombre")
+      .eq("id", user.id)
+      .single();
+    if (perfil?.nombre) setUsuarioNombre(perfil.nombre);
+  };
 
-  const cargarEventosCarrusel = async () => {
-    const { data } = await supabase
-      .from("eventos")
-      .select("id, titulo, url_imagen, fecha_inicio, categorias(nombre)")
-      .eq("estado_publicacion", "publicado")
-      .not("url_imagen", "is", null)
-      .gte("fecha_inicio", new Date().toISOString().split("T")[0])
-      .order("fecha_inicio", { ascending: true });
+  const cargarCarrusel = async () => {
+    const { data: cats } = await supabase
+      .from("categorias")
+      .select("id, nombre, slug")
+      .is("parent_id", null)
+      .eq("activo", true)
+      .order("orden");
 
-    if (!data) return;
+    if (!cats) return;
+    setCategorias(cats);
 
-    const mapa: Record<string, EventoCarrusel> = {};
-    for (const e of data as any[]) {
-      const catNombre = e.categorias?.nombre;
-      if (catNombre && !mapa[catNombre]) {
-        mapa[catNombre] = {
-          categoria: catNombre,
-          titulo: e.titulo,
-          url_imagen: e.url_imagen,
-          id: e.id,
+    const hijoIds = await supabase
+      .from("categorias")
+      .select("id, parent_id")
+      .not("parent_id", "is", null)
+      .eq("activo", true);
+
+    if (!hijoIds.data) return;
+
+    const mapa: Record<number, EventoCarrusel> = {};
+
+    for (const cat of cats) {
+      const hijos = hijoIds.data
+        .filter((h: any) => h.parent_id === cat.id)
+        .map((h: any) => h.id);
+
+      const catIds = [cat.id, ...hijos];
+
+      const { data: eventos } = await supabase
+        .from("eventos")
+        .select("id, titulo, url_imagen, fecha_inicio")
+        .eq("estado_publicacion", "publicado")
+        .in("categoria_id", catIds)
+        .or("fecha_inicio.gte." + new Date().toISOString().split("T")[0] + ",fecha_inicio.is.null")
+        .order("fecha_inicio", { ascending: true, nullsFirst: false })
+        .limit(1);
+
+      if (eventos && eventos.length > 0) {
+        mapa[cat.id] = {
+          id: eventos[0].id,
+          titulo: eventos[0].titulo,
+          url_imagen: eventos[0].url_imagen,
         };
       }
     }
-    setEventosCarrusel(mapa);
+
+    setEventosMap(mapa);
+  };
+
+  const scroll = (dir: "left" | "right") => {
+    const el = carruselRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir === "right" ? 260 : -260, behavior: "smooth" });
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUsuarioNombre(null);
   };
 
   return (
-    <main className="min-h-screen bg-white">
+    <main style={{ minHeight: "100vh", background: "#fff", fontFamily: "'Nunito', sans-serif" }}>
 
       {/* NAVBAR */}
-      <nav className="fixed top-0 w-full z-50 backdrop-blur-sm shadow-sm"
-        style={{ background: "linear-gradient(90deg, #1a3a6b 0%, #1a6b8c 100%)" }}>
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Image src="/logo_transparente.png" alt="Next In Faith" width={70} height={70} />
-            <span className="font-bold text-lg text-white">Next In Faith</span>
+      <nav style={{
+        position: "fixed", top: 0, width: "100%", zIndex: 50,
+        background: "linear-gradient(90deg, #1a3a6b 0%, #1a6b8c 100%)",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.15)"
+      }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <img src="/logo_transparente.png" alt="Next In Faith" style={{ width: 44, height: 44 }} />
+            <span style={{ fontWeight: 700, fontSize: 16, color: "#fff" }}>Next In Faith</span>
           </div>
-          <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-white">
-            <a href="#" className="hover:text-[#4aa8d8] transition-colors">Acerca de</a>
-            <a href="#" className="hover:text-[#4aa8d8] transition-colors">Contáctanos</a>
-            <a href="/portal" className="hover:text-white transition-colors">Portal</a>
-            <a href="#" className="border border-[#4aa8d8] text-[#4aa8d8] px-4 py-2 rounded-full hover:bg-[#4aa8d8] hover:text-white transition-all">Sign In</a>
-            <a href="#" className="bg-[#e8a020] text-white px-4 py-2 rounded-full hover:bg-[#f5c060] transition-all">Sign Up</a>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            {usuarioNombre ? (
+              <>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>Hola, {usuarioNombre}</span>
+                <button onClick={handleLogout} style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", background: "none", border: "none", cursor: "pointer" }}>
+                  Salir
+                </button>
+              </>
+            ) : (
+              <>
+                <a href="/login" style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", textDecoration: "none", fontWeight: 600 }}>Iniciar sesión</a>
+                <a href="/registro" style={{ fontSize: 13, background: "#e8a020", color: "#fff", padding: "7px 18px", borderRadius: 99, textDecoration: "none", fontWeight: 700 }}>Regístrate</a>
+              </>
+            )}
           </div>
-          <button className="md:hidden text-white text-2xl" onClick={() => setMenuAbierto(!menuAbierto)}>
-            {menuAbierto ? "✕" : "☰"}
-          </button>
-          {menuAbierto && (
-            <div className="absolute top-full left-0 w-full flex flex-col gap-4 px-6 py-6 md:hidden"
-              style={{ background: "linear-gradient(180deg, #1a3a6b 0%, #1a6b8c 100%)" }}>
-              <a href="#" className="text-white font-semibold">Acerca de</a>
-              <a href="#" className="text-white font-semibold">Contáctanos</a>
-              <a href="/portal" className="text-white font-semibold">Portal</a>
-              <a href="#" className="text-white font-semibold">Sign In</a>
-              <a href="#" className="bg-[#e8a020] text-white px-4 py-2 rounded-full text-center font-semibold">Sign Up</a>
-            </div>
-          )}
         </div>
       </nav>
 
       {/* HERO */}
-      <section className="relative h-screen flex items-center justify-center">
-        <Image src="/background.jpg" alt="Evento católico" fill className="object-cover" priority />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1a3a6b]/70 via-black/40 to-[#1a9b8c]/60" />
-        <div className="relative z-10 text-center text-white px-6">
-          <h1 className="font-serif text-5xl md:text-7xl font-bold mb-4 drop-shadow-lg">
-            Next In Faith
+      <section style={{
+        height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+        background: "linear-gradient(170deg, #1a3a6b 0%, #1a6b8c 50%, #4aa8d8 100%)",
+        paddingTop: 64,
+      }}>
+        <div style={{ textAlign: "center", color: "#fff", padding: "0 24px" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", color: "rgba(255,255,255,0.65)", marginBottom: 16 }}>
+            Plataforma católica de eventos
+          </div>
+          <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: "clamp(2.5rem, 7vw, 5rem)", fontWeight: 700, lineHeight: 1.1, marginBottom: 20 }}>
+            Entérate primero de los<br />
+            <span style={{ color: "#5bb8f5", fontStyle: "italic" }}>eventos católicos</span>
           </h1>
-          <p className="text-xl md:text-2xl font-light tracking-widest drop-shadow-md">
-            Donde la fe cobra vida
+          <p style={{ fontSize: 18, color: "rgba(255,255,255,0.8)", marginBottom: 36, maxWidth: 520, margin: "0 auto 36px" }}>
+            Retiros, conciertos, conferencias, peregrinaciones y más — antes de que se agoten los lugares.
           </p>
+          <a href="#eventos" style={{ background: "#e8a020", color: "#fff", padding: "14px 32px", borderRadius: 99, fontSize: 15, fontWeight: 700, textDecoration: "none" }}>
+            Ver eventos →
+          </a>
         </div>
       </section>
 
-      {/* CATEGORÍAS */}
-      <section className="py-20 px-6"
-        style={{ background: "linear-gradient(170deg, #1a3a6b 0%, #1a6b8c 40%, #4aa8d8 75%, #dff0fb 100%)" }}>
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-white mb-4">
+      {/* CARRUSEL */}
+      <section id="eventos" style={{ padding: "64px 24px", background: "linear-gradient(170deg, #1a3a6b 0%, #1a6b8c 40%, #4aa8d8 75%, #dff0fb 100%)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <h2 style={{ fontSize: 28, fontWeight: 700, color: "#fff", textAlign: "center", marginBottom: 8 }}>
             Descubre eventos católicos
           </h2>
-          <p className="text-center text-white/80 mb-12">
-            Encuentra retiros, conciertos, conferencias y más cerca de ti
+          <p style={{ textAlign: "center", color: "rgba(255,255,255,0.75)", marginBottom: 36, fontSize: 15 }}>
+            Encuentra lo que mueve tu fe
           </p>
 
-          {/* CARRUSEL */}
-          <div ref={carruselRef} className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide scroll-smooth">
-            {CATEGORIAS.map((cat) => {
-              const evento = eventosCarrusel[cat.dbName];
-              return (
-                <a
-                  key={cat.name}
-                  href={evento ? `/eventos/${evento.id}` : "#"}
-                  className="snap-start flex-shrink-0 w-56 h-72 rounded-2xl overflow-hidden cursor-pointer hover:scale-105 transition-transform shadow-lg relative no-underline"
-                  style={{ backgroundColor: cat.color }}
-                >
-                  {/* Foto real si existe */}
-                  {evento?.url_imagen ? (
-                    <img
-                      src={evento.url_imagen}
-                      alt={evento.titulo}
-                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                    />
-                  ) : (
-                    <div className="absolute inset-0 opacity-20"
-                      style={{ background: `radial-gradient(circle at 30% 70%, white 0%, transparent 60%)` }} />
-                  )}
+          <div style={{ position: "relative" }}>
+            {/* Flecha izquierda */}
+            <button onClick={() => scroll("left")} style={{
+              position: "absolute", left: -20, top: "50%", transform: "translateY(-50%)",
+              zIndex: 10, background: "#fff", border: "none", borderRadius: "50%",
+              width: 40, height: 40, fontSize: 18, cursor: "pointer",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center"
+            }}>‹</button>
 
-                  {/* Overlay degradado siempre presente */}
-                  <div className="absolute inset-0"
-                    style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)" }} />
-
-                  {/* Texto */}
-                  <div className="absolute bottom-0 left-0 right-0 p-5">
-                    <p className="text-white font-bold text-lg leading-tight">{cat.name}</p>
-                    {evento ? (
-                      <p className="text-white/80 text-xs mt-1 leading-snug">{evento.titulo}</p>
-                    ) : (
-                      <p className="text-white/70 text-xs mt-1">Ver eventos →</p>
+            {/* Tarjetas */}
+            <div ref={carruselRef} style={{
+              display: "flex", gap: 20, overflowX: "auto", paddingBottom: 8,
+              scrollbarWidth: "none", scrollSnapType: "x mandatory",
+            }}>
+              {categorias.map((cat, i) => {
+                const evento = eventosMap[cat.id];
+                return (
+                  <a key={cat.id} href={`/eventos?categoria=${cat.slug}`} style={{
+                    flexShrink: 0, width: 220, height: 280, borderRadius: 16,
+                    overflow: "hidden", position: "relative", textDecoration: "none",
+                    scrollSnapAlign: "start", backgroundColor: COLORES[i % COLORES.length],
+                    display: "block",
+                  }}>
+                    {evento?.url_imagen && (
+                      <img src={evento.url_imagen} alt={evento.titulo}
+                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
                     )}
-                  </div>
-                </a>
-              );
-            })}
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)" }} />
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 16 }}>
+                      <p style={{ color: "#fff", fontWeight: 700, fontSize: 15, lineHeight: 1.3, margin: 0 }}>{cat.nombre}</p>
+                      {evento ? (
+                        <p style={{ color: "rgba(255,255,255,0.75)", fontSize: 11, marginTop: 4 }}>{evento.titulo}</p>
+                      ) : (
+                        <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 11, marginTop: 4 }}>Próximamente →</p>
+                      )}
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+
+            {/* Flecha derecha */}
+            <button onClick={() => scroll("right")} style={{
+              position: "absolute", right: -20, top: "50%", transform: "translateY(-50%)",
+              zIndex: 10, background: "#fff", border: "none", borderRadius: "50%",
+              width: 40, height: 40, fontSize: 18, cursor: "pointer",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center"
+            }}>›</button>
           </div>
         </div>
       </section>

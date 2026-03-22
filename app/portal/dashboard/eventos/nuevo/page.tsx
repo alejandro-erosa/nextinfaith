@@ -186,7 +186,7 @@ export default function NuevoEventoPage() {
       }
     } else {
       const { data: ev, error: errEv } = await supabase.from("eventos").insert({
-        ...campos, organizador_id: user.id, estado_publicacion: "borrador", exposicion: "basica",
+        ...campos, organizador_id: user.id, creado_por: user.id, estado_publicacion: "borrador", exposicion: "basica",
       }).select().single();
       if (errEv || !ev) { setError("Error al guardar: " + (errEv?.message ?? "")); setSaving(false); return; }
       setEventoId(ev.id);
