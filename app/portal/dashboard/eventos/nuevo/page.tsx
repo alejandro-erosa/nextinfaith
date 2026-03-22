@@ -2,12 +2,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../../lib/supabase";
+import { useUser } from "../../../../context/UserContext";
 
 type Categoria = { id: number; nombre: string; parent_id: number | null; slug: string };
 type CategoriaGrupo = { id: number; nombre: string; subcategorias: Categoria[] };
-type Fecha = { fecha: string; hora_inicio: string; hora_fin: string; ciudad: string; estado: string; venue: string };
+type Fecha = { fecha: string; hora_inicio: string; hora_fin: string };
 
-const fechaVacia = (): Fecha => ({ fecha: "", hora_inicio: "", hora_fin: "", ciudad: "", estado: "", venue: "" });
+const fechaVacia = (): Fecha => ({ fecha: "", hora_inicio: "", hora_fin: "" });
 
 const detectarTipo = (slug: string) => {
   if (!slug) return "general";
@@ -39,6 +40,10 @@ export default function NuevoEventoPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
 
+  //Estatus del usuario en cuanto a Permisos
+  const { userId, userRol, requiereAprobacion } = useUser();
+
+  const [estadoPublicacion, setEstadoPublicacion] = useState("borrador");
   const [tabActual, setTabActual] = useState(0);
   const [eventoId, setEventoId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -121,7 +126,7 @@ export default function NuevoEventoPage() {
   const slugActual = categoriaId ? (slugMap[categoriaId as number] ?? "") : "";
   const tipo = detectarTipo(slugActual);
   const subcatNombre = categoriaId ? grupos.flatMap(g => g.subcategorias).find(s => s.id === categoriaId)?.nombre ?? "" : "";
-  const TABS = ["Información general", "Fechas y sedes", `Detalles: ${TIPO_LABEL[tipo]}`, "Corresponsales"];
+  const TABS = ["Información general", "Fechas y sedes", "Detalles", "Corresponsales"];
 
   const onImagenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -185,6 +190,7 @@ export default function NuevoEventoPage() {
       }).select().single();
       if (errEv || !ev) { setError("Error al guardar: " + (errEv?.message ?? "")); setSaving(false); return; }
       setEventoId(ev.id);
+      setEstadoPublicacion(ev.estado_publicacion ?? "borrador");
       if (imagenFile) {
         const { url, errorMsg } = await subirImagen(ev.id);
         if (errorMsg) { setErrorImagen(errorMsg); }
@@ -197,7 +203,7 @@ export default function NuevoEventoPage() {
 
   const guardarTab2 = async () => {
     if (!eventoId) { setError("Guarda la información general primero."); return; }
-    if (!fechas[0].fecha) { setError("Agrega al menos una fecha."); return; }
+   // if (!fechas[0].fecha) { setError("Agrega al menos una fecha."); return; }   VAlidadción de tener al menos una fecha elimiada por Alejandro Erosa 2026 03 21 
     setSaving(true); setError("");
     await supabase.from("evento_fechas").delete().eq("evento_id", eventoId);
     await supabase.from("evento_fechas").insert(fechas.map(f => ({ evento_id: eventoId, fecha: f.fecha || null, hora_inicio: f.hora_inicio || null, hora_fin: f.hora_fin || null, activa: true })));
@@ -226,6 +232,16 @@ export default function NuevoEventoPage() {
       await supabase.from("ext_peregrinaciones").insert({ evento_id: eventoId, agencia: agencia || null, incluye_vuelo: incluyeVuelo, incluye_hotel: incluyeHotel, incluye_guia_espiritual: incluyeGuia, duracion_dias: duracionDias ? parseInt(duracionDias) : null, precio_por_persona: precioPorPersona, cupo_maximo: cupoMaximo ? parseInt(cupoMaximo) : null });
     }
     setSaving(false); setTabActual(3);
+  };
+  
+  const enviarARevision = async () => {
+    if (!eventoId) return;
+    setSaving(true);
+    await supabase.from("eventos")
+      .update({ estado_publicacion: "en_revision" })
+      .eq("id", eventoId);
+    setEstadoPublicacion("en_revision");
+    setSaving(false);
   };
 
   const finalizar = () => { if (eventoId) router.push(`/portal/dashboard/eventos/${eventoId}`); };
@@ -363,6 +379,7 @@ export default function NuevoEventoPage() {
             </div>
           </div>
 
+
           <div style={{ display: "flex", justifyContent: "flex-end", paddingBottom: 32 }}>
             <button onClick={guardarTab1} disabled={saving} style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#1a3a6b", color: "#fff", opacity: saving ? 0.6 : 1 }}>{saving ? "Guardando..." : "Guardar y continuar →"}</button>
           </div>
@@ -387,11 +404,6 @@ export default function NuevoEventoPage() {
                   <div><label style={lbl}>Fecha *</label><input style={inp} type="date" value={f.fecha} onChange={e => actualizarFecha(i, "fecha", e.target.value)} /></div>
                   <div><label style={lbl}>Hora inicio</label><input style={inp} type="time" value={f.hora_inicio} onChange={e => actualizarFecha(i, "hora_inicio", e.target.value)} /></div>
                   <div><label style={lbl}>Hora fin</label><input style={inp} type="time" value={f.hora_fin} onChange={e => actualizarFecha(i, "hora_fin", e.target.value)} /></div>
-                </div>
-                <div style={g3}>
-                  <div><label style={lbl}>Ciudad</label><input style={inp} value={f.ciudad} onChange={e => actualizarFecha(i, "ciudad", e.target.value)} placeholder={ciudad} /></div>
-                  <div><label style={lbl}>Estado</label><input style={inp} value={f.estado} onChange={e => actualizarFecha(i, "estado", e.target.value)} placeholder={estadoEvento} /></div>
-                  <div><label style={lbl}>Venue / Sede</label><input style={inp} value={f.venue} onChange={e => actualizarFecha(i, "venue", e.target.value)} placeholder={venue} /></div>
                 </div>
               </div>
             ))}
@@ -505,19 +517,42 @@ export default function NuevoEventoPage() {
       {/* PESTAÑA 4 */}
       {tabActual === 3 && (
         <>
-          <div style={card}>
-            <div style={cardT}>Corresponsales</div>
+        <div style={{ fontSize: 11, color: "red" }}>
+          eventoId: {eventoId ?? "null"} | estado: {estadoPublicacion}
+        </div>
+        <div style={card}>
+          <div style={cardT}>Corresponsales</div>
             <div style={{ fontSize: 13, color: "#4a6278", textAlign: "center", padding: 24 }}>
               La asignación de corresponsales estará disponible próximamente.<br />
               <span style={{ fontSize: 12, color: "#7a9ab0" }}>Puedes finalizar el evento y asignar corresponsales desde el detalle del evento.</span>
             </div>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 32 }}>
-            <button onClick={() => setTabActual(2)} style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>← Anterior</button>
-            <button onClick={finalizar} style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#0F6E56", color: "#fff" }}>Finalizar y ver evento →</button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
+
+          {(estadoPublicacion === "borrador" || estadoPublicacion === "rechazado") ? (
+          <div style={card}>
+            <div style={cardT}>Estado del evento</div>
+              <div style={{ fontSize: 13, color: "#4a6278", marginBottom: 16 }}>
+                El evento está en <strong>{estadoPublicacion}</strong>. ¿Deseas enviarlo a revisión para su publicación?
+              </div>
+              <button
+                onClick={enviarARevision}
+                disabled={saving}
+                style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#e8a020", color: "#fff", opacity: saving ? 0.6 : 1 }}>
+                {saving ? "Enviando..." : "Enviar a revisión"}
+              </button>
+            </div>
+            ) : estadoPublicacion === "en_revision" ? (
+            <div style={{ ...card, background: "#dff0fb", border: "0.5px solid #b5d4f4" }}>
+              <div style={{ fontSize: 13, color: "#185FA5" }}>✓ Evento enviado a revisión. Un administrador lo revisará próximamente.</div>
+              </div>
+            ) : null}
+
+            <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 32 }}>
+              <button onClick={() => setTabActual(2)} style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>← Anterior</button>
+              <button onClick={finalizar} style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#0F6E56", color: "#fff" }}>Finalizar y ver evento →</button>
+            </div>
+          </>
+          )}
+        </div>
+        );
+      }

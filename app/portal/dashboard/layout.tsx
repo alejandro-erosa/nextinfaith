@@ -1,9 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "../../lib/supabase";
+import { UserProvider, useUser } from "../../context/UserContext";
 
 type NavItem = { label: string; href: string };
 type NavGroup = { section: string; items: NavItem[] };
@@ -74,58 +74,12 @@ const ROL_LABEL: Record<string, string> = {
   organizador: "Organizador",
 };
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function DashboardSidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const [userEmail, setUserEmail] = useState("");
-  const [userInitials, setUserInitials] = useState("--");
-  const [userNombre, setUserNombre] = useState("");
-  const [userRol, setUserRol] = useState("editor");
-  const [navItems, setNavItems] = useState<NavGroup[]>(NAV_EDITOR);
-  const [loading, setLoading] = useState(true);
+  const { userEmail, userNombre, userInitials, userRol, loading } = useUser();
 
-  useEffect(() => {
-    inicializar();
-  }, []);
-
-  const inicializar = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { router.push("/portal"); return; }
-
-    const email = session.user.email ?? "";
-    setUserEmail(email);
-
-    const parts = email.split("@")[0].split(/[._-]/);
-    const initials = parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : email.slice(0, 2).toUpperCase();
-    setUserInitials(initials);
-
-    // Leer perfil
-    const { data: perfil } = await supabase
-      .from("profiles")
-      .select("nombre, apellido")
-      .eq("id", session.user.id)
-      .single();
-
-    if (perfil) {
-      setUserNombre(`${perfil.nombre} ${perfil.apellido}`);
-      const ini = `${perfil.nombre[0]}${perfil.apellido[0]}`.toUpperCase();
-      setUserInitials(ini);
-    }
-
-    // Leer rol
-    const { data: rolData } = await supabase
-      .from("user_roles")
-      .select("roles(nombre)")
-      .eq("user_id", session.user.id)
-      .single();
-
-    const rolNombre = (rolData?.roles as any)?.nombre ?? "editor";
-    setUserRol(rolNombre);
-    setNavItems(NAV_BY_ROL[rolNombre] ?? NAV_EDITOR);
-    setLoading(false);
-  };
+  const navItems = NAV_BY_ROL[userRol] ?? NAV_EDITOR;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -144,84 +98,73 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   );
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#f0f6fb" }}>
-      <aside style={{ width: 210, minWidth: 210, background: "#1a3a6b", display: "flex", flexDirection: "column" }}>
-
-        {/* Logo */}
-        <div style={{ padding: "18px 16px 16px", borderBottom: "0.5px solid rgba(255,255,255,0.12)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Image src="/logo_transparente.png" alt="Next In Faith" width={32} height={32} style={{ borderRadius: 4 }} />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "#fff" }}>Next In Faith</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>Donde la fe cobra vida</div>
-            </div>
+    <aside style={{ width: 210, minWidth: 210, background: "#1a3a6b", display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "18px 16px 16px", borderBottom: "0.5px solid rgba(255,255,255,0.12)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Image src="/logo_transparente.png" alt="Next In Faith" width={32} height={32} style={{ borderRadius: 4 }} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "#fff" }}>Next In Faith</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>Donde la fe cobra vida</div>
           </div>
         </div>
+      </div>
 
-        {/* Rol badge + usuario */}
-        <div style={{ padding: "8px 16px 12px", borderBottom: "0.5px solid rgba(255,255,255,0.12)" }}>
-          <span style={{
-            fontSize: 10, background: "rgba(74,168,216,0.2)", color: "#4aa8d8",
-           padding: "2px 8px", borderRadius: 99, fontWeight: 500
-         }}>
-            {ROL_LABEL[userRol] ?? userRol}
-          </span>
-          <div style={{ marginTop: 8 }}>
-           <div style={{ fontSize: 12, color: "#fff", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {userNombre || userEmail}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2, gap: 8 }}>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                 {userEmail}
-            </div>
-           <button onClick={handleLogout} style={{
-             background: "none", border: "none", cursor: "pointer",
-             color: "rgba(255,255,255,0.4)", fontSize: 11, padding: 0, flexShrink: 0
-              }}>
-             Salir
-           </button>
+      <div style={{ padding: "8px 16px 12px", borderBottom: "0.5px solid rgba(255,255,255,0.12)" }}>
+        <span style={{ fontSize: 10, background: "rgba(74,168,216,0.2)", color: "#4aa8d8", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>
+          {ROL_LABEL[userRol] ?? userRol}
+        </span>
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 12, color: "#fff", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {userNombre || userEmail}
           </div>
-         </div>
-          </div>
-
-        {/* Nav */}
-        <nav style={{ flex: 1, paddingTop: 4 }}>
-          {navItems.map((group) => (
-            <div key={group.section}>
-              <div style={{
-                fontSize: 10, color: "rgba(255,255,255,0.4)",
-                padding: "12px 16px 4px", textTransform: "uppercase", letterSpacing: "0.06em"
-              }}>
-                {group.section}
-              </div>
-              {group.items.map((item) => (
-                <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
-                  <div style={{
-                    display: "flex", alignItems: "center", gap: 9,
-                    padding: "8px 16px", fontSize: 13,
-                    color: isActive(item.href) ? "#fff" : "rgba(255,255,255,0.65)",
-                    background: isActive(item.href) ? "rgba(255,255,255,0.14)" : "transparent",
-                    fontWeight: isActive(item.href) ? 500 : 400,
-                    cursor: "pointer", transition: "background 0.1s",
-                  }}>
-                    <span style={{
-                      width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
-                      background: isActive(item.href) ? "#4aa8d8" : "rgba(255,255,255,0.25)"
-                    }} />
-                    {item.label}
-                  </div>
-                </Link>
-              ))}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2, gap: 8 }}>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+              {userEmail}
             </div>
-          ))}
-        </nav>
+            <button onClick={handleLogout} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.4)", fontSize: 11, padding: 0, flexShrink: 0 }}>
+              Salir
+            </button>
+          </div>
+        </div>
+      </div>
 
-       
-      </aside>
+      <nav style={{ flex: 1, paddingTop: 4 }}>
+        {navItems.map((group) => (
+          <div key={group.section}>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", padding: "12px 16px 4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              {group.section}
+            </div>
+            {group.items.map((item) => (
+              <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 9,
+                  padding: "8px 16px", fontSize: 13,
+                  color: isActive(item.href) ? "#fff" : "rgba(255,255,255,0.65)",
+                  background: isActive(item.href) ? "rgba(255,255,255,0.14)" : "transparent",
+                  fontWeight: isActive(item.href) ? 500 : 400,
+                  cursor: "pointer",
+                }}>
+                  <span style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: isActive(item.href) ? "#4aa8d8" : "rgba(255,255,255,0.25)" }} />
+                  {item.label}
+                </div>
+              </Link>
+            ))}
+          </div>
+        ))}
+      </nav>
+    </aside>
+  );
+}
 
-      <main style={{ flex: 1, minWidth: 0, overflow: "visible" }}>
-        {children}
-      </main>
-    </div>
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <UserProvider>
+      <div style={{ display: "flex", minHeight: "100vh", background: "#f0f6fb" }}>
+        <DashboardSidebar />
+        <main style={{ flex: 1, minWidth: 0, overflow: "visible" }}>
+          {children}
+        </main>
+      </div>
+    </UserProvider>
   );
 }

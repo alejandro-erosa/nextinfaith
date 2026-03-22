@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../../../lib/supabase";
+import { useUser } from "../../../../../context/UserContext";
 
 type Categoria = { id: number; nombre: string; parent_id: number | null; slug: string };
 type CategoriaGrupo = { id: number; nombre: string; subcategorias: Categoria[] };
@@ -31,6 +32,8 @@ export default function EditarEventoPage() {
   const params = useParams();
   const id = params?.id as string;
   const fileRef = useRef<HTMLInputElement>(null);
+  //Estatus del usuario en cuanto a Permisos
+  const { userId, userRol, requiereAprobacion } = useUser();
 
   const [tabActual, setTabActual] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -43,6 +46,9 @@ export default function EditarEventoPage() {
   const [grupos, setGrupos] = useState<CategoriaGrupo[]>([]);
   const [slugMap, setSlugMap] = useState<Record<number, string>>({});
   const [nombreCatPadre, setNombreCatPadre] = useState("");
+
+  //Estatus del evento
+  const [estadoPublicacion, setEstadoPublicacion] = useState("borrador");
 
   // Pestaña 1
   const [titulo, setTitulo] = useState("");
@@ -94,6 +100,8 @@ export default function EditarEventoPage() {
   const [duracionDias, setDuracionDias] = useState("");
   const [precioPorPersona, setPrecioPorPersona] = useState(0);
 
+
+
   useEffect(() => {
     cargarCategorias();
     cargarEvento();
@@ -143,6 +151,7 @@ export default function EditarEventoPage() {
     setTienePrograma(ev.tiene_programa ?? false);
     setTieneLocalidades(ev.tiene_localidades ?? false);
     setTelefonoContacto(ev.telefono_contacto ?? "");
+    setEstadoPublicacion(ev.estado_publicacion ?? "borrador");
     setProgramaDescripcion(ev.programa_descripcion ?? "");
 
     // Nombre categoría padre
@@ -160,15 +169,12 @@ export default function EditarEventoPage() {
         fecha: f.fecha ?? "",
         hora_inicio: f.hora_inicio ?? "",
         hora_fin: f.hora_fin ?? "",
-        ciudad: ev.ciudad ?? "",
-        estado: ev.estado ?? "",
-        venue: ev.venue ?? "",
       })));
     }
 
     // Pre-llenar pestaña 3 según tipo
     const slug = ev.categoria_id ? "" : ""; // se resolverá con slugMap
-    const { data: extC } = await supabase.from("ext_conciertos").select("*").eq("evento_id", id).single();
+    const { data: extC } = await supabase.from("ext_conciertos").select("*").eq("evento_id", id).maybeSingle();
     if (extC) {
       setArtistas(extC.artistas ?? "");
       setHoraApertura(extC.hora_apertura_puertas ?? "");
@@ -177,7 +183,7 @@ export default function EditarEventoPage() {
       setPrecioVip(extC.precio_vip ?? 0);
       setTieneZonaFamiliar(extC.tiene_zona_familiar ?? false);
     }
-    const { data: extR } = await supabase.from("ext_retiros").select("*").eq("evento_id", id).single();
+    const { data: extR } = await supabase.from("ext_retiros").select("*").eq("evento_id", id).maybeSingle();
     if (extR) {
       setCupoMaximo(extR.cupo_maximo?.toString() ?? "");
       setPrecioCompleto(extR.precio_completo ?? 0);
@@ -187,7 +193,7 @@ export default function EditarEventoPage() {
       setRequiereInscripcion(extR.requiere_inscripcion_previa ?? false);
       setPeriodicidadRetiro(extR.periodicidad ?? "");
     }
-    const { data: extConf } = await supabase.from("ext_conferencias").select("*").eq("evento_id", id).single();
+    const { data: extConf } = await supabase.from("ext_conferencias").select("*").eq("evento_id", id).maybeSingle();
     if (extConf) {
       setPonentes(extConf.ponentes ?? "");
       setTematica(extConf.tematica ?? "");
@@ -196,7 +202,7 @@ export default function EditarEventoPage() {
       setUrlTransmision(extConf.url_transmision ?? "");
       setPeriodicidadConf(extConf.periodicidad ?? "");
     }
-    const { data: extP } = await supabase.from("ext_peregrinaciones").select("*").eq("evento_id", id).single();
+    const { data: extP } = await supabase.from("ext_peregrinaciones").select("*").eq("evento_id", id).maybeSingle();
     if (extP) {
       setAgencia(extP.agencia ?? "");
       setIncluyeVuelo(extP.incluye_vuelo ?? false);
@@ -227,7 +233,7 @@ export default function EditarEventoPage() {
   const slugActual = categoriaId ? (slugMap[categoriaId as number] ?? "") : "";
   const tipo = detectarTipo(slugActual);
   const subcatNombre = categoriaId ? grupos.flatMap(g => g.subcategorias).find(s => s.id === categoriaId)?.nombre ?? "" : "";
-  const TABS = ["Información general", "Fechas y sedes", `Detalles: ${TIPO_LABEL[tipo]}`, "Corresponsales"];
+  const TABS = ["Información general", "Fechas y sedes", "Detalles", "Corresponsales"];
 
   const onImagenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -265,6 +271,14 @@ export default function EditarEventoPage() {
   };
 
   // GUARDAR PESTAÑA 1
+  const enviarARevision = async () => {
+    setSaving(true);
+    await supabase.from("eventos")
+      .update({ estado_publicacion: "en_revision" })
+      .eq("id", id);
+    setEstadoPublicacion("en_revision");
+    setSaving(false);
+  };
   const guardarTab1 = async () => {
     if (!titulo.trim()) { setError("El título es obligatorio."); return; }
     if (!categoriaId) { setError("Selecciona una categoría."); return; }
@@ -328,7 +342,11 @@ export default function EditarEventoPage() {
   // GUARDAR PESTAÑA 3
   const guardarTab3 = async () => {
     setSaving(true); setError("");
-
+    // Limpiar ext_* de otros tipos al guardar
+    await supabase.from("ext_conciertos").delete().eq("evento_id", Number(id));
+    await supabase.from("ext_retiros").delete().eq("evento_id", Number(id));
+    await supabase.from("ext_conferencias").delete().eq("evento_id", Number(id));
+    await supabase.from("ext_peregrinaciones").delete().eq("evento_id", Number(id));
     if (tipo === "concierto") {
       await supabase.from("ext_conciertos").delete().eq("evento_id", id);
       await supabase.from("ext_conciertos").insert({
@@ -434,6 +452,27 @@ export default function EditarEventoPage() {
           {error}
         </div>
       )}
+
+      {(estadoPublicacion === "borrador" || estadoPublicacion === "rechazado") && (
+        <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#fff8ec", border: "0.5px solid #e8a020", borderRadius: 8 }}>
+          <div style={{ fontSize: 13, color: "#7a4f00" }}>
+            Este evento está en <strong>{estadoPublicacion}</strong>. Puedes corregir lo necesario y enviarlo a revisión.
+          </div>
+          <button
+            onClick={enviarARevision}
+            disabled={saving}
+            style={{ marginLeft: 16, padding: "6px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#e8a020", color: "#fff", opacity: saving ? 0.6 : 1, flexShrink: 0 }}>
+            {saving ? "Enviando..." : "Enviar a revisión"}
+          </button>
+        </div>
+      )}
+
+      {estadoPublicacion === "en_revision" && (
+        <div style={{ marginBottom: 16, padding: "10px 14px", background: "#dff0fb", border: "0.5px solid #b5d4f4", borderRadius: 8, fontSize: 13, color: "#185FA5" }}>
+          ✓ Evento en revisión. Un administrador lo revisará próximamente.
+        </div>
+      )}
+
 
       {/* PESTAÑA 1 */}
       {tabActual === 0 && (
@@ -751,25 +790,19 @@ export default function EditarEventoPage() {
 
       {/* PESTAÑA 4 */}
       {tabActual === 3 && (
-        <>
-          <div style={card}>
-            <div style={cardT}>Corresponsales</div>
-            <div style={{ fontSize: 13, color: "#4a6278", textAlign: "center", padding: 24 }}>
-              La asignación de corresponsales se gestiona desde el detalle del evento.<br />
-              <span style={{ fontSize: 12, color: "#7a9ab0" }}>Finaliza la edición y regresa al detalle para gestionar corresponsales.</span>
-            </div>
+      <>
+        <div style={card}>
+         <div style={cardT}>Corresponsales</div>
+          <div style={{ fontSize: 13, color: "#4a6278", textAlign: "center", padding: 24 }}>
+            La asignación de corresponsales se gestiona desde el detalle del evento.<br />
+            <span style={{ fontSize: 12, color: "#7a9ab0" }}>Finaliza la edición y regresa al detalle para gestionar corresponsales.</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 32 }}>
-            <button onClick={() => setTabActual(2)}
-              style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>
-              ← Anterior
-            </button>
-            <button onClick={finalizar}
-              style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#0F6E56", color: "#fff" }}>
-              Finalizar edición →
-            </button>
-          </div>
-        </>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 32 }}>
+          <button onClick={() => setTabActual(2)} style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>← Anterior</button>
+          <button onClick={finalizar} style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#0F6E56", color: "#fff" }}>Finalizar edición →</button>
+        </div>
+      </>
       )}
     </div>
   );
