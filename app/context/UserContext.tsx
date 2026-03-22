@@ -18,7 +18,7 @@ const UserContext = createContext<UserContextType>({
   userEmail: "",
   userNombre: "",
   userInitials: "--",
-  userRol: "editor",
+  userRol: "",
   requiereAprobacion: true,
   loading: true,
 });
@@ -31,7 +31,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [userEmail, setUserEmail] = useState("");
   const [userNombre, setUserNombre] = useState("");
   const [userInitials, setUserInitials] = useState("--");
-  const [userRol, setUserRol] = useState("editor");
+  const [userRol, setUserRol] = useState("");
   const [requiereAprobacion, setRequiereAprobacion] = useState(true);
   const [loading, setLoading] = useState(true);
 

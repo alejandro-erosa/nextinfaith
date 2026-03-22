@@ -1,85 +1,89 @@
 "use client";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "../../lib/supabase";
 import { UserProvider, useUser } from "../../context/UserContext";
 
-type NavItem = { label: string; href: string };
+type NavItem  = { label: string; href: string };
 type NavGroup = { section: string; items: NavItem[] };
 
-const NAV_SUPER_ADMIN: NavGroup[] = [
-  { section: "Principal", items: [
-    { label: "Eventos", href: "/portal/dashboard" },
-    { label: "Reseñas", href: "/portal/dashboard/resenas" },
-    { label: "Cobertura", href: "/portal/dashboard/cobertura" },
-  ]},
-  { section: "Gestión", items: [
-    { label: "Organizadores", href: "/portal/dashboard/organizadores" },
-    { label: "Usuarios", href: "/portal/dashboard/usuarios" },
-    { label: "Pagos", href: "/portal/dashboard/pagos" },
-    { label: "Publicidad", href: "/portal/dashboard/publicidad" },
-  ]},
-];
-
-const NAV_ADMIN: NavGroup[] = [
-  { section: "Principal", items: [
-    { label: "Eventos", href: "/portal/dashboard" },
-    { label: "Reseñas", href: "/portal/dashboard/resenas" },
-    { label: "Cobertura", href: "/portal/dashboard/cobertura" },
-  ]},
-  { section: "Gestión", items: [
-    { label: "Organizadores", href: "/portal/dashboard/organizadores" },
-    { label: "Usuarios", href: "/portal/dashboard/usuarios" },
-    { label: "Pagos", href: "/portal/dashboard/pagos" },
-    { label: "Publicidad", href: "/portal/dashboard/publicidad" },
-  ]},
-];
-
-const NAV_EDITOR: NavGroup[] = [
-  { section: "Principal", items: [
-    { label: "Eventos", href: "/portal/dashboard" },
-    { label: "Reseñas", href: "/portal/dashboard/resenas" },
-    { label: "Cobertura", href: "/portal/dashboard/cobertura" },
-  ]},
-];
-
-const NAV_MODERADOR: NavGroup[] = [
-  { section: "Principal", items: [
-    { label: "Eventos", href: "/portal/dashboard" },
-    { label: "Reseñas", href: "/portal/dashboard/resenas" },
-  ]},
-];
-
-const NAV_ORGANIZADOR: NavGroup[] = [
-  { section: "Mis datos", items: [
-    { label: "Mis eventos", href: "/portal/dashboard" },
-    { label: "Mis reseñas", href: "/portal/dashboard/resenas" },
-  ]},
-];
-
-const NAV_BY_ROL: Record<string, NavGroup[]> = {
-  super_admin: NAV_SUPER_ADMIN,
-  admin:       NAV_ADMIN,
-  editor:      NAV_EDITOR,
-  moderador:   NAV_MODERADOR,
-  organizador: NAV_ORGANIZADOR,
-};
-
 const ROL_LABEL: Record<string, string> = {
-  super_admin: "Super Admin",
-  admin:       "Admin",
-  editor:      "Editor",
-  moderador:   "Moderador",
-  organizador: "Organizador",
+  super_admin:  "Super Admin",
+  admin:        "Admin",
+  editor:       "Editor",
+  moderador:    "Moderador",
+  organizador:  "Organizador",
+  corresponsal: "Corresponsal",
+  influencer:   "Influencer",
 };
 
 function DashboardSidebar() {
-  const router = useRouter();
+  const router   = useRouter();
   const pathname = usePathname();
-  const { userEmail, userNombre, userInitials, userRol, loading } = useUser();
+  const { userEmail, userNombre, userRol, loading } = useUser();
 
-  const navItems = NAV_BY_ROL[userRol] ?? NAV_EDITOR;
+  const [navGroups, setNavGroups]     = useState<NavGroup[]>([]);
+  const [navLoading, setNavLoading]   = useState(true);
+  
+  useEffect(() => {
+    console.log('userRol al cargar nav:', userRol);
+    if (!userRol) return;
+    cargarNav();
+  }, [userRol]);
+  useEffect(() => {
+    if (!userRol) return;
+    cargarNav();
+  }, [userRol]);
+
+  async function cargarNav() {
+    setNavLoading(true);
+    try {
+
+      
+      // 1. Obtener rol_id
+      const { data: rolData } = await supabase
+        .from('roles')
+        .select('id')
+        .eq('nombre', userRol)
+        .single();
+
+
+      if (!rolData) { setNavLoading(false); return; }
+  
+      // 2. Obtener permiso_ids del rol
+      const { data: rpData } = await supabase
+        .from('rol_permisos')
+        .select('permiso_id')
+        .eq('rol_id', rolData.id);
+  
+      
+      const permisoIds = (rpData || []).map((r: any) => r.permiso_id);
+      if (permisoIds.length === 0) { setNavLoading(false); return; }
+  
+      // 3. Obtener navegación
+      const { data: navData } = await supabase
+        .from('navegacion')
+        .select('seccion, label, href, orden')
+        .in('permiso_id', permisoIds)
+        .order('orden');
+
+       
+  
+      const grupos: Record<string, NavItem[]> = {};
+      (navData || []).forEach((item: any) => {
+        if (!grupos[item.seccion]) grupos[item.seccion] = [];
+        grupos[item.seccion].push({ label: item.label, href: item.href });
+      });
+  
+      setNavGroups(
+        Object.entries(grupos).map(([section, items]) => ({ section, items }))
+      );
+    } finally {
+      setNavLoading(false);
+    }
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -91,7 +95,7 @@ function DashboardSidebar() {
     return pathname.startsWith(href);
   };
 
-  if (loading) return (
+  if (loading || navLoading) return (
     <div style={{ display: "flex", minHeight: "100vh", alignItems: "center", justifyContent: "center", background: "#f0f6fb" }}>
       <div style={{ fontSize: 13, color: "#4a6278" }}>Cargando...</div>
     </div>
@@ -99,6 +103,7 @@ function DashboardSidebar() {
 
   return (
     <aside style={{ width: 210, minWidth: 210, background: "#1a3a6b", display: "flex", flexDirection: "column" }}>
+      {/* Logo */}
       <div style={{ padding: "18px 16px 16px", borderBottom: "0.5px solid rgba(255,255,255,0.12)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Image src="/logo_transparente.png" alt="Next In Faith" width={32} height={32} style={{ borderRadius: 4 }} />
@@ -109,6 +114,7 @@ function DashboardSidebar() {
         </div>
       </div>
 
+      {/* Usuario */}
       <div style={{ padding: "8px 16px 12px", borderBottom: "0.5px solid rgba(255,255,255,0.12)" }}>
         <span style={{ fontSize: 10, background: "rgba(74,168,216,0.2)", color: "#4aa8d8", padding: "2px 8px", borderRadius: 99, fontWeight: 500 }}>
           {ROL_LABEL[userRol] ?? userRol}
@@ -128,29 +134,36 @@ function DashboardSidebar() {
         </div>
       </div>
 
+      {/* Navegación dinámica */}
       <nav style={{ flex: 1, paddingTop: 4 }}>
-        {navItems.map((group) => (
-          <div key={group.section}>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", padding: "12px 16px 4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              {group.section}
-            </div>
-            {group.items.map((item) => (
-              <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
-                <div style={{
-                  display: "flex", alignItems: "center", gap: 9,
-                  padding: "8px 16px", fontSize: 13,
-                  color: isActive(item.href) ? "#fff" : "rgba(255,255,255,0.65)",
-                  background: isActive(item.href) ? "rgba(255,255,255,0.14)" : "transparent",
-                  fontWeight: isActive(item.href) ? 500 : 400,
-                  cursor: "pointer",
-                }}>
-                  <span style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: isActive(item.href) ? "#4aa8d8" : "rgba(255,255,255,0.25)" }} />
-                  {item.label}
-                </div>
-              </Link>
-            ))}
+        {navGroups.length === 0 ? (
+          <div style={{ padding: "16px", fontSize: 12, color: "rgba(255,255,255,0.35)" }}>
+            Sin secciones asignadas
           </div>
-        ))}
+        ) : (
+          navGroups.map((group) => (
+            <div key={group.section}>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", padding: "12px 16px 4px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                {group.section}
+              </div>
+              {group.items.map((item) => (
+                <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 9,
+                    padding: "8px 16px", fontSize: 13,
+                    color: isActive(item.href) ? "#fff" : "rgba(255,255,255,0.65)",
+                    background: isActive(item.href) ? "rgba(255,255,255,0.14)" : "transparent",
+                    fontWeight: isActive(item.href) ? 500 : 400,
+                    cursor: "pointer",
+                  }}>
+                    <span style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: isActive(item.href) ? "#4aa8d8" : "rgba(255,255,255,0.25)" }} />
+                    {item.label}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ))
+        )}
       </nav>
     </aside>
   );

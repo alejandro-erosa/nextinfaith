@@ -428,6 +428,13 @@ export default function EditarEventoPage() {
           <div style={{ fontSize: 18, fontWeight: 600, color: "#1a2b3c" }}>Editar evento</div>
           <div style={{ fontSize: 12, color: "#7a9ab0", marginTop: 2 }}>Los cambios se guardan pestaña por pestaña.</div>
         </div>
+        <div style={{ display: "flex", gap: 10 }}>
+           <button
+            onClick={() => router.push("/portal/dashboard")}
+            style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>
+           Ir al dashboard
+           </button>
+        </div>
         <button onClick={() => router.push(`/portal/dashboard/eventos/${id}`)}
           style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>
           ← Volver al detalle
@@ -800,7 +807,18 @@ export default function EditarEventoPage() {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 32 }}>
           <button onClick={() => setTabActual(2)} style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>← Anterior</button>
-          <button onClick={finalizar} style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#0F6E56", color: "#fff" }}>Finalizar edición →</button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={() => router.push("/portal/dashboard")}
+              style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>
+              Ir al dashboard
+            </button>
+            <button
+              onClick={finalizar}
+              style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "none", background: "#0F6E56", color: "#fff" }}>
+              Ver evento →
+            </button>
+          </div>
         </div>
       </>
       )}
