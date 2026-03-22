@@ -137,10 +137,12 @@ export default function Home() {
       {/* HERO */}
       <section style={{
         height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-        background: "linear-gradient(170deg, #1a3a6b 0%, #1a6b8c 50%, #4aa8d8 100%)",
-        paddingTop: 64,
+        position: "relative", paddingTop: 64,
       }}>
-        <div style={{ textAlign: "center", color: "#fff", padding: "0 24px" }}>
+        <img src="/background.jpg" alt="Evento católico"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(26,58,107,0.7), rgba(0,0,0,0.4), rgba(26,107,140,0.6))" }} />
+        <div style={{ position: "relative", zIndex: 1, textAlign: "center", color: "#fff", padding: "0 24px" }}>
           <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", color: "rgba(255,255,255,0.65)", marginBottom: 16 }}>
             Plataforma católica de eventos
           </div>
@@ -156,7 +158,7 @@ export default function Home() {
           </a>
         </div>
       </section>
-
+      
       {/* CARRUSEL */}
       <section id="eventos" style={{ padding: "64px 24px", background: "linear-gradient(170deg, #1a3a6b 0%, #1a6b8c 40%, #4aa8d8 75%, #dff0fb 100%)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
