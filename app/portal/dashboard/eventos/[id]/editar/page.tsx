@@ -332,7 +332,7 @@ export default function EditarEventoPage() {
       fecha_inicio: primeraFecha.fecha || null,
       fecha_fin: ultimaFecha.fecha || null,
       hora_inicio: primeraFecha.hora_inicio || null,
-      venue: primeraFecha.venue || venue || null,
+      venue: venue || null,
     }).eq("id", id);
 
     setSaving(false);
