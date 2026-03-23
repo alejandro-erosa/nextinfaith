@@ -208,7 +208,7 @@ export default function NuevoEventoPage() {
     await supabase.from("evento_fechas").delete().eq("evento_id", eventoId);
     await supabase.from("evento_fechas").insert(fechas.map(f => ({ evento_id: eventoId, fecha: f.fecha || null, hora_inicio: f.hora_inicio || null, hora_fin: f.hora_fin || null, activa: true })));
     const primeraFecha = fechas[0]; const ultimaFecha = fechas[fechas.length - 1];
-    await supabase.from("eventos").update({ fecha_inicio: primeraFecha.fecha || null, fecha_fin: ultimaFecha.fecha || null, hora_inicio: primeraFecha.hora_inicio || null, venue: primeraFecha.venue || venue || null }).eq("id", eventoId);
+    await supabase.from("eventos").update({ fecha_inicio: primeraFecha.fecha || null, fecha_fin: ultimaFecha.fecha || null, hora_inicio: primeraFecha.hora_inicio || null, venue: venue || null }).eq("id", eventoId);
     setSaving(false); setTabActual(2);
   };
 
