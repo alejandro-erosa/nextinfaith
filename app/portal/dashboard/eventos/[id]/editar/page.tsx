@@ -642,11 +642,6 @@ export default function EditarEventoPage() {
                   <div><label style={lbl}>Hora inicio</label><input style={inp} type="time" value={f.hora_inicio} onChange={e => actualizarFecha(i, "hora_inicio", e.target.value)} /></div>
                   <div><label style={lbl}>Hora fin</label><input style={inp} type="time" value={f.hora_fin} onChange={e => actualizarFecha(i, "hora_fin", e.target.value)} /></div>
                 </div>
-                <div style={g3}>
-                  <div><label style={lbl}>Ciudad</label><input style={inp} value={f.ciudad} onChange={e => actualizarFecha(i, "ciudad", e.target.value)} /></div>
-                  <div><label style={lbl}>Estado</label><input style={inp} value={f.estado} onChange={e => actualizarFecha(i, "estado", e.target.value)} /></div>
-                  <div><label style={lbl}>Venue / Sede</label><input style={inp} value={f.venue} onChange={e => actualizarFecha(i, "venue", e.target.value)} /></div>
-                </div>
               </div>
             ))}
           </div>
