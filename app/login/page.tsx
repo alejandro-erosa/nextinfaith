@@ -40,11 +40,13 @@ export default function LoginPage() {
 
     const rol = (rolData?.roles as any)?.nombre ?? "usuario";
     const rolesInternos = ["super_admin", "admin", "editor", "moderador", "corresponsal", "influencer"];
+    const params = new URLSearchParams(window.location.search);
+    const returnTo = params.get("returnTo");
 
     if (rolesInternos.includes(rol)) {
       window.location.href = "/portal/dashboard";
     } else {
-      window.location.href = "/";
+      window.location.href = returnTo ?? "/";
     }
 
     setLoading(false);

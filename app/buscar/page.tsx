@@ -190,7 +190,7 @@ function EventosContent() {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
             {eventos.map(ev => (
-              <a key={ev.id} href={`/eventos/${ev.id}`} style={{ textDecoration: "none" }}>
+              <a key={ev.id} href={`/buscar/${ev.id}`} style={{ textDecoration: "none" }}>
                 <div style={{
                   background: "#fff", borderRadius: 16, overflow: "hidden",
                   border: "0.5px solid #c8d8e8", transition: "transform 0.15s",

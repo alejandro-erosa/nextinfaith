@@ -52,7 +52,9 @@ export default function RegistroPage() {
     });
 
     setSaving(false);
-    router.push("/");
+    const params = new URLSearchParams(window.location.search);
+    const returnTo = params.get("returnTo");
+    router.push(returnTo ?? "/");
   };
 
   const inp: React.CSSProperties = {
