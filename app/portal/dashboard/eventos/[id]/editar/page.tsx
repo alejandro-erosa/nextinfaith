@@ -6,9 +6,9 @@ import { useUser } from "../../../../../context/UserContext";
 
 type Categoria = { id: number; nombre: string; parent_id: number | null; slug: string };
 type CategoriaGrupo = { id: number; nombre: string; subcategorias: Categoria[] };
-type Fecha = { id?: number; fecha: string; hora_inicio: string; hora_fin: string; ciudad: string; estado: string; venue: string };
+type Fecha = { id?: number; fecha: string; hora_inicio: string; hora_fin: string; };
 
-const fechaVacia = (): Fecha => ({ fecha: "", hora_inicio: "", hora_fin: "", ciudad: "", estado: "", venue: "" });
+const fechaVacia = (): Fecha => ({ fecha: "", hora_inicio: "", hora_fin: "" });
 
 const detectarTipo = (slug: string) => {
   if (!slug) return "general";
