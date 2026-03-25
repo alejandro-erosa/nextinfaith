@@ -13,6 +13,7 @@ export default function RegistroPage() {
   const [password, setPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [verPassword, setVerPassword] = useState(false);
 
   const handleRegistro = async () => {
     if (!nombre.trim()) { setError("El nombre es obligatorio."); return; }
@@ -61,6 +62,7 @@ export default function RegistroPage() {
     width: "100%", border: "0.5px solid #b5d4f4", borderRadius: 10,
     padding: "11px 14px", fontSize: 14, color: "#1a2b3c",
     background: "#fff", outline: "none", marginTop: 4,
+    boxSizing: "border-box",
   };
   const lbl: React.CSSProperties = {
     fontSize: 12, fontWeight: 600, color: "#4a6278",
@@ -121,7 +123,20 @@ export default function RegistroPage() {
 
           <div style={field}>
             <label style={lbl}>Contraseña</label>
-            <input style={inp} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+            <div style={{ position: "relative" , width: "100%"}}>
+              <input
+                style={{ ...inp, paddingRight: 40 }}
+                type={verPassword ? "text" : "password"}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+              />
+              <button
+                onClick={() => setVerPassword(!verPassword)}
+                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#7a96aa", padding: 0 }}>
+                {verPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
           </div>
 
           {error && (

@@ -85,7 +85,7 @@ function EventosContent() {
       .from("eventos")
       .select("id, titulo, url_imagen, ciudad, estado, fecha_inicio, costo_minimo, exposicion, categorias(nombre)")
       .eq("estado_publicacion", "publicado")
-      .or("fecha_inicio.gte." + new Date().toISOString().split("T")[0] + ",fecha_inicio.is.null")
+  //    .or("fecha_inicio.gte." + new Date().toISOString().split("T")[0] + ",fecha_inicio.is.null")  TRae los ultimos eventos
       .order("fecha_inicio", { ascending: true, nullsFirst: false })
       .limit(12);
 
@@ -199,7 +199,7 @@ function EventosContent() {
                     <img
                       src={ev.url_imagen ?? PLACEHOLDER}
                       alt={ev.titulo}
-                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                      style={{ position: "absolute", inset: 0, width: "100%", aspectRatio: "4/3", objectFit: "cover" }}
                     />
                   </div>
                   <div style={{ padding: "14px 16px" }}>

@@ -2,11 +2,13 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 
-export default function LoginPage() {
+  export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [verPassword, setVerPassword] = useState(false);
+  
 
   const handleLogin = async () => {
     if (!email.trim()) { setError("El correo es obligatorio."); return; }
@@ -56,6 +58,7 @@ export default function LoginPage() {
     width: "100%", border: "0.5px solid #b5d4f4", borderRadius: 10,
     padding: "11px 14px", fontSize: 14, color: "#1a2b3c",
     background: "#fff", outline: "none", marginTop: 4,
+    boxSizing: "border-box",
   };
   const lbl: React.CSSProperties = {
     fontSize: 12, fontWeight: 600, color: "#4a6278", display: "block",
@@ -84,7 +87,7 @@ export default function LoginPage() {
           background: "#fff", borderRadius: 24, padding: "36px 32px",
           boxShadow: "0 4px 6px rgba(0,0,0,0.04), 0 12px 40px rgba(91,184,245,0.15), 0 0 0 1px rgba(91,184,245,0.12)",
         }}>
-          <div style={{ marginBottom: 16 }}>
+          <div style={{ marginBottom: 16, boxSizing: "border-box" }}>
             <label style={lbl}>Correo electrónico</label>
             <input
               style={inp} type="email" value={email}
@@ -95,12 +98,21 @@ export default function LoginPage() {
 
           <div style={{ marginBottom: 16 }}>
             <label style={lbl}>Contraseña</label>
-            <input
-              style={inp} type="password" value={password}
-              onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleLogin()}
-              placeholder="••••••••"
-            />
+            <div style={{ position: "relative" , width: "100%"}}>
+              <input
+                style={{ ...inp, paddingRight: 40, boxSizing: "border-box"  }} 
+                type={verPassword ? "text" : "password"} 
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleLogin()}
+                placeholder="••••••••"
+              />
+              <button
+                onClick={() => setVerPassword(!verPassword)}
+                style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#7a96aa", padding: 0 }}>
+                {verPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
           </div>
 
           {error && (

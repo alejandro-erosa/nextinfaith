@@ -76,6 +76,7 @@ export default function NuevoEventoPage() {
 
   // Pestaña 2
   const [fechas, setFechas] = useState<Fecha[]>([fechaVacia()]);
+  const [fechaFin, setFechaFin] = useState("");
 
   // Pestaña 3
   const [artistas, setArtistas] = useState("");
@@ -208,7 +209,7 @@ export default function NuevoEventoPage() {
     await supabase.from("evento_fechas").delete().eq("evento_id", eventoId);
     await supabase.from("evento_fechas").insert(fechas.map(f => ({ evento_id: eventoId, fecha: f.fecha || null, hora_inicio: f.hora_inicio || null, hora_fin: f.hora_fin || null, activa: true })));
     const primeraFecha = fechas[0]; const ultimaFecha = fechas[fechas.length - 1];
-    await supabase.from("eventos").update({ fecha_inicio: primeraFecha.fecha || null, fecha_fin: ultimaFecha.fecha || null, hora_inicio: primeraFecha.hora_inicio || null, venue: venue || null }).eq("id", eventoId);
+    await supabase.from("eventos").update({ fecha_inicio: primeraFecha.fecha || null, fecha_fin: fechaFin ||ultimaFecha.fecha || null, hora_inicio: primeraFecha.hora_inicio || null, venue: venue || null }).eq("id", eventoId);
     setSaving(false); setTabActual(2);
   };
 
@@ -407,6 +408,16 @@ export default function NuevoEventoPage() {
                 </div>
               </div>
             ))}
+          </div>
+          <div style={card}>
+            <div style={cardT}>Duración del evento</div>
+            <div style={{ ...g2 }}>
+              <div>
+                <label style={lbl}>Fecha de término</label>
+                <input style={inp} type="date" value={fechaFin} onChange={e => setFechaFin(e.target.value)} />
+                <div style={{ fontSize: 11, color: "#7a9ab0", marginTop: 4 }}>Solo si el evento dura más de un día. Dejar vacío si es en una sola fecha.</div>
+              </div>
+            </div>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: 32 }}>
             <button onClick={() => setTabActual(0)} style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: "0.5px solid #c8d8e8", background: "#fff", color: "#1a2b3c" }}>← Anterior</button>

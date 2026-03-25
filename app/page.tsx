@@ -121,7 +121,7 @@ export default function Home() {
         .select("id, titulo, url_imagen, fecha_inicio")
         .eq("estado_publicacion", "publicado")
         .in("categoria_id", catIds)
-        .or("fecha_inicio.gte." + new Date().toISOString().split("T")[0] + ",fecha_inicio.is.null")
+     //   .or("fecha_inicio.gte." + new Date().toISOString().split("T")[0] + ",fecha_inicio.is.null")    Trae el ultimo evento o el más cercano proximo
         .order("fecha_inicio", { ascending: true, nullsFirst: false })
         .limit(1);
 

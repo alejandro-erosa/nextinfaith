@@ -273,7 +273,7 @@ export default function EventoDetallePage() {
           <div>
             <Card title="Imagen del evento">
               {evento.url_imagen ? (
-                <img src={evento.url_imagen} alt={evento.titulo} style={{ width: "100%", height: 110, objectFit: "cover", borderRadius: 8 }} />
+                <img src={evento.url_imagen} alt={evento.titulo} style={{ width: "80%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 8 }} />
               ) : (
                 <div style={{ width: "100%", height: 110, background: "#dff0fb", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "#4a6278", border: "0.5px solid #b5d4f4" }}>
                   Sin imagen cargada

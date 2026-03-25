@@ -164,11 +164,11 @@ export default function DetalleEventoPublico() {
       </nav>
 
       {/* IMAGEN HERO */}
-      <div style={{ position: "relative", height: 320, background: "#1a3a6b" }}>
+      <div style={{ background: "#1a3a6b", display: "flex", justifyContent: "center", alignItems: "center", position: "relative" }}>
         <img
-          src={evento.url_imagen ?? "https://placehold.co/1200x400/1a3a6b/ffffff?text=Next+In+Faith"}
+          src={evento.url_imagen ?? "https://placehold.co/800x600/1a3a6b/ffffff?text=Next+In+Faith"}
           alt={evento.titulo}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          style={{ width: "35%", aspectRatio: "4/3", objectFit: "cover" }}
         />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)" }} />
         <div style={{ position: "absolute", bottom: 24, left: 24, right: 24 }}>

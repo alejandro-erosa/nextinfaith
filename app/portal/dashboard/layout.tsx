@@ -165,6 +165,13 @@ function DashboardSidebar() {
           ))
         )}
       </nav>
+      {/* Ver sitio */}
+      <div style={{ borderTop: "0.5px solid rgba(255,255,255,0.12)", padding: "12px 16px" }}>
+        <a href="/" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: "rgba(255,255,255,0.65)", textDecoration: "none" }}>
+          <span style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: "rgba(255,255,255,0.25)" }} />
+          Ver sitio
+        </a>
+      </div>
     </aside>
   );
 }
