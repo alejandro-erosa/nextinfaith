@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(wait:*)",
+      "Bash(cd:*)",
+      "Bash(for f:*)",
+      "Bash(do)",
+      "Bash(path=\"G:/dev/Proyectos/nextinfaith/$f\")",
+      "Read(//g/dev/Proyectos/nextinfaith/**)",
+      "Bash(done)",
+      "Bash(echo \"=== $f ===\")",
+      "Bash(npx next:*)",
+      "Bash(npm install:*)",
+      "Bash(npm show:*)",
+      "Bash(node -e \"const v=JSON.parse\\(require\\(''''fs''''\\).readFileSync\\(''''/dev/stdin'''',''''utf8''''\\)\\); const v15=v.filter\\(x=>x.startsWith\\(''''15.''''\\)\\).slice\\(-5\\); console.log\\(v15.join\\(''''\\\\n''''\\)\\)\")",
+      "Bash(rm:*)",
+      "Bash(npm ls:*)"
+    ]
+  }
+}

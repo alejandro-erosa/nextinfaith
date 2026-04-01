@@ -1,0 +1,48 @@
+# --- ARTEFACTOS DE COMPILACIÓN (ALTO CONSUMO DE TOKENS) ---
+.next/
+out/
+build/
+dist/
+.turbo/
+
+# --- DEPENDENCIAS (NUNCA ENVIAR ESTO) ---
+node_modules/
+bun.lockb
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# --- RECURSOS ESTÁTICOS Y MULTIMEDIA ---
+public/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.webp
+*.mp4
+*.pdf
+
+# --- CONFIGURACIONES DE SUPABASE (EXCEPTO MIGRACIONES) ---
+supabase/.temp/
+supabase/storage/
+supabase/functions/*/node_modules/
+
+# --- LOGS Y CACHÉ ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+.cache/
+
+# --- ARCHIVOS DE ENTORNO (SEGURIDAD + AHORRO) ---
+.env*
+!.env.example
+.vercel/
+.github/
+
+# --- DOCUMENTACIÓN PESADA ---
+README.md
+CHANGELOG.md

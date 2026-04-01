@@ -92,7 +92,7 @@ function DashboardSidebar() {
 
   const isActive = (href: string) => {
     if (href === "/portal/dashboard") return pathname === "/portal/dashboard";
-    return pathname.startsWith(href);
+    return pathname?.startsWith(href) ?? false;
   };
 
   if (loading || navLoading) return (
