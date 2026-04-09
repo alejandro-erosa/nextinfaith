@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 
   export default function LoginPage() {
@@ -8,6 +8,14 @@ import { supabase } from "../lib/supabase";
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [verPassword, setVerPassword] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("message") === "password-updated") {
+      setSuccessMsg("Contraseña actualizada. Ya puedes iniciar sesión.");
+    }
+  }, []);
 
 
   const handleLogin = async () => {
@@ -115,6 +123,12 @@ import { supabase } from "../lib/supabase";
             </div>
           </div>
 
+          {successMsg && (
+            <div style={{ padding: "10px 14px", background: "#EBF7EB", border: "0.5px solid #7bc97b", borderRadius: 8, fontSize: 13, color: "#1e6b1e", marginBottom: 16 }}>
+              {successMsg}
+            </div>
+          )}
+
           {error && (
             <div style={{ padding: "10px 14px", background: "#FCEBEB", border: "0.5px solid #F09595", borderRadius: 8, fontSize: 13, color: "#A32D2D", marginBottom: 16 }}>
               {error}
@@ -132,6 +146,12 @@ import { supabase } from "../lib/supabase";
             }}>
             {loading ? "Entrando..." : "Entrar →"}
           </button>
+
+          <div style={{ textAlign: "center", marginTop: 14, fontSize: 13 }}>
+            <a href="/auth/forgot-password" style={{ color: "#185FA5", fontWeight: 600, textDecoration: "none" }}>
+              ¿Olvidaste tu contraseña?
+            </a>
+          </div>
 
           <div style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#7a96aa" }}>
             ¿No tienes cuenta?{" "}
