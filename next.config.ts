@@ -3,6 +3,12 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  images: {
+    remotePatterns: [
+      { hostname: "sxeqazzypifkokvjenyg.supabase.co" },
+      { hostname: "placehold.co" },
+    ],
+  },
   webpack: (config) => {
     const cwd = process.cwd();
     config.resolve.alias = {

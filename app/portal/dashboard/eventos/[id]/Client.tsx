@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../../lib/supabase";
 
@@ -118,24 +119,7 @@ export default function EventoDetallePage() {
   const [decisionExposicion, setDecisionExposicion] = useState("");
   const [estadosPublicacionOpts, setEstadosPublicacionOpts] = useState<{ id: number; clave: string; nombre: string }[]>([]);
 
-  useEffect(() => {
-    if (id) cargarEvento();
-    supabase.from("estados_publicacion").select("id, clave, nombre").order("nombre").then(({ data }) => {
-      if (data) setEstadosPublicacionOpts(data);
-    });
-  }, [id]);
-
-  // Si el tab activo queda oculto por los flags del evento, resetea a general
-  useEffect(() => {
-    if (!evento) return;
-    if (tab === "programa" && !evento.tiene_programa) setTab("general");
-    if (tab === "localidades" && !evento.tiene_localidades) setTab("general");
-    // Inicializar decisión con los valores actuales del evento
-    setDecisionEstado(evento.estado_publicacion);
-    setDecisionExposicion(evento.exposicion ?? "basica");
-  }, [evento]);
-
-  const cargarEvento = async () => {
+  const cargarEvento = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase
       .from("eventos")
@@ -158,7 +142,22 @@ export default function EventoDetallePage() {
     if (tData.data) setTickets(tData.data);
     if (cData.data) setCorresponsales(cData.data.filter((c: Corresponsal) => c.estado_corresponsal === "activo"));
     setLoading(false);
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) cargarEvento();
+    supabase.from("estados_publicacion").select("id, clave, nombre").order("nombre").then(({ data }) => {
+      if (data) setEstadosPublicacionOpts(data);
+    });
+  }, [id, cargarEvento]);
+
+  useEffect(() => {
+    if (!evento) return;
+    if (tab === "programa" && !evento.tiene_programa) setTab("general");
+    if (tab === "localidades" && !evento.tiene_localidades) setTab("general");
+    setDecisionEstado(evento.estado_publicacion);
+    setDecisionExposicion(evento.exposicion ?? "basica");
+  }, [evento, tab]);
 
   const guardarDecision = async () => {
     setSavingDecision(true);
@@ -283,7 +282,7 @@ export default function EventoDetallePage() {
           <div>
             <Card title="Imagen del evento">
               {evento.url_imagen ? (
-                <img src={evento.url_imagen} alt={evento.titulo} style={{ width: "80%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 8 }} />
+                <Image src={evento.url_imagen} alt={evento.titulo} width={400} height={300} style={{ width: "80%", height: "auto", objectFit: "cover", borderRadius: 8 }} />
               ) : (
                 <div style={{ width: "100%", height: 110, background: "#dff0fb", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "#4a6278", border: "0.5px solid #b5d4f4" }}>
                   Sin imagen cargada

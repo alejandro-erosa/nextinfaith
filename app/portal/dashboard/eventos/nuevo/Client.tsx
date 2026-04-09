@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../../lib/supabase";
-import { useUser } from "../../../../context/UserContext";
 
 type Categoria = { id: number; nombre: string; parent_id: number | null; slug: string };
 type CategoriaGrupo = { id: number; nombre: string; subcategorias: Categoria[] };
@@ -42,9 +42,6 @@ const PERIODICIDAD_OPCIONES = [
 export default function NuevoEventoPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
-
-  //Estatus del usuario en cuanto a Permisos
-  const { userId, userRol, requiereAprobacion } = useUser();
 
   const [estadoPublicacion, setEstadoPublicacion] = useState("borrador");
   const [tabActual, setTabActual] = useState(0);
@@ -384,8 +381,8 @@ export default function NuevoEventoPage() {
           <div style={card}>
             <div style={cardT}>Imagen del evento</div>
             <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-              <div onClick={() => fileRef.current?.click()} style={{ width: 160, height: 120, borderRadius: 8, flexShrink: 0, cursor: "pointer", border: errorImagen ? "1.5px solid #F09595" : "0.5px dashed #b5d4f4", background: "#dff0fb", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {imagenPreview ? <img src={imagenPreview} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 11, color: "#4a6278", textAlign: "center", padding: 8 }}>Clic para seleccionar imagen</span>}
+              <div onClick={() => fileRef.current?.click()} style={{ width: 160, height: 120, borderRadius: 8, flexShrink: 0, cursor: "pointer", border: errorImagen ? "1.5px solid #F09595" : "0.5px dashed #b5d4f4", background: "#dff0fb", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                {imagenPreview ? <Image src={imagenPreview} alt="preview" fill style={{ objectFit: "cover" }} unoptimized /> : <span style={{ fontSize: 11, color: "#4a6278", textAlign: "center", padding: 8 }}>Clic para seleccionar imagen</span>}
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 12, color: "#4a6278", marginBottom: 8 }}>Proporción recomendada: 4:3. Formatos: JPG, PNG, WEBP.</div>

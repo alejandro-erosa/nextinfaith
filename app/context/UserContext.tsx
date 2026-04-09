@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
@@ -35,9 +35,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [requiereAprobacion, setRequiereAprobacion] = useState(true);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { inicializar(); }, []);
-
-  const inicializar = async () => {
+  const inicializar = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { router.push("/portal"); return; }
 
@@ -70,7 +68,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     setUserRol((rolData?.roles as any)?.nombre ?? "editor");
     setLoading(false);
-  };
+  }, [router]);
+
+  useEffect(() => { inicializar(); }, [inicializar]);
 
   return (
     <UserContext.Provider value={{ userId, userEmail, userNombre, userInitials, userRol, requiereAprobacion, loading }}>

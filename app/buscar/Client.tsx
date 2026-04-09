@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 import { Suspense } from "react";
@@ -34,31 +35,7 @@ function EventosContent() {
   });
   const [fecha, setFecha] = useState(searchParams?.get("fecha") ?? "");
 
-  useEffect(() => {
-    cargarFiltros();
-  }, []);
-
-  useEffect(() => {
-    buscar();
-  }, [categoriaSlug, ciudadId, fecha]);
-
-  const cargarFiltros = async () => {
-    const { data: cats } = await supabase
-      .from("categorias")
-      .select("id, nombre, slug")
-      .is("parent_id", null)
-      .eq("activo", true)
-      .order("orden");
-    if (cats) setCategorias(cats);
-
-    const { data: ciu } = await supabase
-      .from("ciudades")
-      .select("id, nombre")
-      .order("nombre");
-    if (ciu) setCiudades(ciu);
-  };
-
-  const buscar = async () => {
+  const buscar = useCallback(async () => {
     setLoading(true);
 
     let catIds: number[] = [];
@@ -95,7 +72,31 @@ function EventosContent() {
     const { data } = await query;
     setEventos((data as any) ?? []);
     setLoading(false);
+  }, [busqueda, categoriaSlug, ciudadId, fecha]);
+
+  const cargarFiltros = async () => {
+    const { data: cats } = await supabase
+      .from("categorias")
+      .select("id, nombre, slug")
+      .is("parent_id", null)
+      .eq("activo", true)
+      .order("orden");
+    if (cats) setCategorias(cats);
+
+    const { data: ciu } = await supabase
+      .from("ciudades")
+      .select("id, nombre")
+      .order("nombre");
+    if (ciu) setCiudades(ciu);
   };
+
+  useEffect(() => {
+    cargarFiltros();
+  }, []);
+
+  useEffect(() => {
+    buscar();
+  }, [categoriaSlug, ciudadId, fecha, buscar]);
 
   const actualizarURL = (params: Record<string, string>) => {
     const p = new URLSearchParams();
@@ -127,7 +128,7 @@ function EventosContent() {
         padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between"
       }}>
         <a href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-          <img src="/logo_transparente.png" alt="Next In Faith" style={{ width: 36, height: 36 }} />
+          <Image src="/logo_transparente.png" alt="Next In Faith" width={36} height={36} />
           <span style={{ fontWeight: 700, fontSize: 15, color: "#fff" }}>Next In Faith</span>
         </a>
         <a href="/login" style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", textDecoration: "none", fontWeight: 600 }}>
@@ -194,10 +195,11 @@ function EventosContent() {
                   border: "0.5px solid #c8d8e8", transition: "transform 0.15s",
                 }}>
                   <div style={{ position: "relative", paddingTop: "75%" }}>
-                    <img
+                    <Image
                       src={ev.url_imagen ?? PLACEHOLDER}
                       alt={ev.titulo}
-                      style={{ position: "absolute", inset: 0, width: "100%", aspectRatio: "4/3", objectFit: "cover" }}
+                      fill
+                      style={{ objectFit: "cover" }}
                     />
                   </div>
                   <div style={{ padding: "14px 16px" }}>

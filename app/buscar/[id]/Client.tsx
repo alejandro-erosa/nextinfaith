@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import { useParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
@@ -50,18 +51,7 @@ export default function DetalleEventoPublico() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    cargarEvento();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUsuario(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [id]);
-
-
-  const cargarEvento = async () => {
+  const cargarEvento = useCallback(async () => {
     setLoading(true);
     const { data: ev } = await supabase
       .from("eventos")
@@ -89,7 +79,17 @@ export default function DetalleEventoPublico() {
     if (rs) setResenas(rs as any);
 
     setLoading(false);
-  };
+  }, [id]);
+
+  useEffect(() => {
+    cargarEvento();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUsuario(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [id, cargarEvento]);
 
   const promedioCalificacion = resenas.length > 0
     ? (resenas.reduce((s, r) => s + r.calificacion, 0) / resenas.length).toFixed(1)
@@ -147,7 +147,7 @@ export default function DetalleEventoPublico() {
         padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between"
       }}>
         <a href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-          <img src="/logo_transparente.png" alt="Next In Faith" style={{ width: 36, height: 36 }} />
+          <Image src="/logo_transparente.png" alt="Next In Faith" width={36} height={36} />
           <span style={{ fontWeight: 700, fontSize: 15, color: "#fff" }}>Next In Faith</span>
         </a>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
@@ -164,10 +164,12 @@ export default function DetalleEventoPublico() {
 
       {/* IMAGEN HERO */}
       <div style={{ background: "#1a3a6b", display: "flex", justifyContent: "center", alignItems: "center", position: "relative" }}>
-        <img
+        <Image
           src={evento.url_imagen ?? "https://placehold.co/800x600/1a3a6b/ffffff?text=Next+In+Faith"}
           alt={evento.titulo}
-          style={{ width: "35%", aspectRatio: "4/3", objectFit: "cover" }}
+          width={800}
+          height={600}
+          style={{ width: "35%", height: "auto", objectFit: "cover" }}
         />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)" }} />
         <div style={{ position: "absolute", bottom: 24, left: 24, right: 24 }}>

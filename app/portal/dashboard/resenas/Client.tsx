@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabase";
 
 type Resena = {
@@ -19,9 +19,7 @@ export default function ResenasPage() {
   const [filtro, setFiltro] = useState<"pendiente" | "aprobada" | "rechazada">("pendiente");
   const [procesando, setProcesando] = useState<number | null>(null);
 
-  useEffect(() => { cargar(); }, [filtro]);
-
-  const cargar = async () => {
+  const cargar = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase
       .from("resenas")
@@ -30,7 +28,9 @@ export default function ResenasPage() {
       .order("created_at", { ascending: false });
     setResenas((data as any) ?? []);
     setLoading(false);
-  };
+  }, [filtro]);
+
+  useEffect(() => { cargar(); }, [filtro, cargar]);
 
   const cambiarEstado = async (id: number, nuevoEstado: "aprobada" | "rechazada") => {
     setProcesando(id);

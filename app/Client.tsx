@@ -20,8 +20,6 @@ const COLORES = [
 ];
 
 export default function Home() {
-  const [menuAbierto, setMenuAbierto] = useState(false);
-  const [usuarioNombre, setUsuarioNombre] = useState<string | null>(null);
   const [categorias, setCategorias] = useState<CategoriaPadre[]>([]);
   const [eventosMap, setEventosMap] = useState<Record<number, EventoCarrusel>>({});
   const carruselRef = useRef<HTMLDivElement>(null);
@@ -32,7 +30,6 @@ export default function Home() {
   const [proximosEventos, setProximosEventos] = useState<any[]>([]);
 
   useEffect(() => {
-    verificarSesion();
     cargarCarrusel();
     cargarFiltrosHome();
     cargarProximosEventos();
@@ -77,16 +74,6 @@ export default function Home() {
     window.location.href = "/buscar?" + p.toString();
   };
 
-  const verificarSesion = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: perfil } = await supabase
-      .from("profiles")
-      .select("nombre")
-      .eq("id", user.id)
-      .single();
-    if (perfil?.nombre) setUsuarioNombre(perfil.nombre);
-  };
 
   const cargarCarrusel = async () => {
     const { data: cats } = await supabase
@@ -141,11 +128,6 @@ export default function Home() {
     const el = carruselRef.current;
     if (!el) return;
     el.scrollBy({ left: dir === "right" ? 260 : -260, behavior: "smooth" });
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUsuarioNombre(null);
   };
 
   return (
@@ -265,8 +247,7 @@ export default function Home() {
                     display: "block",
                   }}>
                     {evento?.url_imagen && (
-                      <img src={evento.url_imagen} alt={evento.titulo}
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                      <Image src={evento.url_imagen} alt={evento.titulo} fill style={{ objectFit: "cover" }} />
                     )}
                     <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)" }} />
                     <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: 16 }}>
@@ -315,10 +296,11 @@ export default function Home() {
                     border: "0.5px solid #c8d8e8",
                   }}>
                     <div style={{ position: "relative", paddingTop: "75%" }}>
-                      <img
+                      <Image
                         src={ev.url_imagen ?? "https://placehold.co/400x300/1a3a6b/ffffff?text=Sin+imagen"}
                         alt={ev.titulo}
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                        fill
+                        style={{ objectFit: "cover" }}
                       />
                     </div>
                     <div style={{ padding: "14px 16px" }}>

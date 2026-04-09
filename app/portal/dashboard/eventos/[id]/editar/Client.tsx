@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import Image from "next/image";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../../../lib/supabase";
-import { useUser } from "../../../../../context/UserContext";
 
 type Categoria = { id: number; nombre: string; parent_id: number | null; slug: string };
 type CategoriaGrupo = { id: number; nombre: string; subcategorias: Categoria[] };
@@ -35,9 +35,6 @@ export default function EditarEventoPage() {
   const params = useParams();
   const id = params?.id as string;
   const fileRef = useRef<HTMLInputElement>(null);
-  //Estatus del usuario en cuanto a Permisos
-  const { userId, userRol, requiereAprobacion } = useUser();
-
   const [tabActual, setTabActual] = useState(0);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -107,12 +104,6 @@ export default function EditarEventoPage() {
 
 
 
-  useEffect(() => {
-    cargarCategorias();
-    cargarEvento();
-    cargarLookups();
-  }, []);
-
   const cargarLookups = async () => {
     const [{ data: ciu }, { data: mod }, { data: est }] = await Promise.all([
       supabase.from("ciudades").select("id, nombre, estado, paises(nombre)").order("nombre"),
@@ -142,7 +133,7 @@ export default function EditarEventoPage() {
     setSlugMap(sm);
   };
 
-  const cargarEvento = async () => {
+  const cargarEvento = useCallback(async () => {
     setLoading(true);
     const { data: ev } = await supabase
       .from("eventos")
@@ -189,7 +180,6 @@ export default function EditarEventoPage() {
     }
 
     // Pre-llenar pestaña 3 según tipo
-    const slug = ev.categoria_id ? "" : ""; // se resolverá con slugMap
     const { data: extC } = await supabase.from("ext_conciertos").select("*").eq("evento_id", id).maybeSingle();
     if (extC) {
       setArtistas(extC.artistas ?? "");
@@ -230,7 +220,13 @@ export default function EditarEventoPage() {
     }
 
     setLoading(false);
-  };
+  }, [id]);
+
+  useEffect(() => {
+    cargarCategorias();
+    cargarEvento();
+    cargarLookups();
+  }, [cargarEvento]);
 
   const onCategoriaChange = (catId: number) => {
     setCategoriaId(catId);
@@ -591,11 +587,12 @@ export default function EditarEventoPage() {
                 width: 160, height: 120, borderRadius: 8, flexShrink: 0, cursor: "pointer",
                 border: errorImagen ? "1.5px solid #F09595" : "0.5px dashed #b5d4f4",
                 background: "#dff0fb", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
+                position: "relative",
               }}>
                 {imagenPreview
-                  ? <img src={imagenPreview} alt="preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ? <Image src={imagenPreview} alt="preview" fill style={{ objectFit: "cover" }} unoptimized />
                   : imagenActual
-                    ? <img src={imagenActual} alt="actual" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ? <Image src={imagenActual} alt="actual" fill style={{ objectFit: "cover" }} />
                     : <span style={{ fontSize: 11, color: "#4a6278", textAlign: "center", padding: 8 }}>Clic para seleccionar imagen</span>
                 }
               </div>

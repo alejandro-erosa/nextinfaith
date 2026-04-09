@@ -230,7 +230,7 @@ export default function UsuariosPage() {
               </tr>
             </thead>
             <tbody>
-              {usuarios.map((u, i) => (
+              {usuarios.map((u) => (
                 <tr key={u.id} className={`border-b border-gray-100 hover:bg-gray-50 ${!u.activo ? 'opacity-50' : ''}`}>
                   <td className="px-4 py-3 font-medium text-gray-800">
                     {u.nombre} {u.apellido}

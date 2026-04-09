@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { supabase } from "../lib/supabase";
 
   export default function LoginPage() {
@@ -82,7 +83,7 @@ import { supabase } from "../lib/supabase";
       <div style={{ width: "100%", maxWidth: 420 }}>
 
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <img src="/logo_fondo_blanco.png" alt="Next In Faith" style={{ width: 120, marginBottom: 16 }} />
+          <Image src="/logo_fondo_blanco.png" alt="Next In Faith" width={120} height={120} style={{ marginBottom: 16, height: "auto" }} />
           <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 26, fontWeight: 700, color: "#1a2b3c", lineHeight: 1.2 }}>
             Bienvenido de vuelta
           </div>

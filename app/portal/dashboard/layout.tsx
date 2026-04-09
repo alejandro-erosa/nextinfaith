@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -27,17 +27,7 @@ function DashboardSidebar() {
   const [navGroups, setNavGroups]     = useState<NavGroup[]>([]);
   const [navLoading, setNavLoading]   = useState(true);
   
-  useEffect(() => {
-    console.log('userRol al cargar nav:', userRol);
-    if (!userRol) return;
-    cargarNav();
-  }, [userRol]);
-  useEffect(() => {
-    if (!userRol) return;
-    cargarNav();
-  }, [userRol]);
-
-  async function cargarNav() {
+  const cargarNav = useCallback(async () => {
     setNavLoading(true);
     try {
 
@@ -83,7 +73,12 @@ function DashboardSidebar() {
     } finally {
       setNavLoading(false);
     }
-  }
+  }, [userRol]);
+
+  useEffect(() => {
+    if (!userRol) return;
+    cargarNav();
+  }, [userRol, cargarNav]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
