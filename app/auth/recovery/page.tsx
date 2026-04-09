@@ -13,17 +13,17 @@ export default function RecoveryPage() {
   const [verified, setVerified] = useState(false);
 
   useEffect(() => {
-    const tokenHash = searchParams?.get("token_hash");
+    const token = searchParams?.get("token");
     const type = searchParams?.get("type");
 
-    if (!tokenHash || type !== "recovery") {
+    if (!token || type !== "recovery") {
       setError("Enlace de recuperación inválido o expirado.");
       setVerifying(false);
       return;
     }
 
     supabase.auth
-      .verifyOtp({ token_hash: tokenHash, type: "recovery" })
+      .verifyOtp({ token, type: "recovery", email: "" })
       .then(({ error: err }) => {
         if (err) {
           setError("El enlace expiró o ya fue usado. Solicita uno nuevo.");
