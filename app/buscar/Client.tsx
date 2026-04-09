@@ -8,8 +8,7 @@ type Evento = {
   id: number;
   titulo: string;
   url_imagen: string | null;
-  ciudad: string | null;
-  estado: string | null;
+  ciudades: { nombre: string; estado: string } | null;
   fecha_inicio: string | null;
   costo_minimo: number | null;
   exposicion: string;
@@ -24,12 +23,15 @@ function EventosContent() {
 
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
-  const [ciudades, setCiudades] = useState<string[]>([]);
+  const [ciudades, setCiudades] = useState<{ id: number; nombre: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [busqueda, setBusqueda] = useState(searchParams?.get("q") ?? "");
   const [categoriaSlug, setCategoriaSlug] = useState(searchParams?.get("categoria") ?? "");
-  const [ciudad, setCiudad] = useState(searchParams?.get("ciudad") ?? "");
+  const [ciudadId, setCiudadId] = useState<number | "">(() => {
+    const raw = searchParams?.get("ciudad");
+    return raw ? Number(raw) : "";
+  });
   const [fecha, setFecha] = useState(searchParams?.get("fecha") ?? "");
 
   useEffect(() => {
@@ -38,7 +40,7 @@ function EventosContent() {
 
   useEffect(() => {
     buscar();
-  }, [categoriaSlug, ciudad, fecha]);
+  }, [categoriaSlug, ciudadId, fecha]);
 
   const cargarFiltros = async () => {
     const { data: cats } = await supabase
@@ -50,14 +52,10 @@ function EventosContent() {
     if (cats) setCategorias(cats);
 
     const { data: ciu } = await supabase
-      .from("eventos")
-      .select("ciudad")
-      .eq("estado_publicacion", "publicado")
-      .not("ciudad", "is", null);
-    if (ciu) {
-      const unicas = [...new Set(ciu.map((e: any) => e.ciudad).filter(Boolean))].sort();
-      setCiudades(unicas as string[]);
-    }
+      .from("ciudades")
+      .select("id, nombre")
+      .order("nombre");
+    if (ciu) setCiudades(ciu);
   };
 
   const buscar = async () => {
@@ -83,14 +81,14 @@ function EventosContent() {
 
     let query = supabase
       .from("eventos")
-      .select("id, titulo, url_imagen, ciudad, estado, fecha_inicio, costo_minimo, exposicion, categorias(nombre)")
+      .select("id, titulo, url_imagen, ciudad_id, ciudades(nombre, estado), fecha_inicio, costo_minimo, exposicion, categorias(nombre)")
       .eq("estado_publicacion", "publicado")
   //    .or("fecha_inicio.gte." + new Date().toISOString().split("T")[0] + ",fecha_inicio.is.null")  TRae los ultimos eventos
       .order("fecha_inicio", { ascending: true, nullsFirst: false })
       .limit(12);
 
     if (catIds.length > 0) query = query.in("categoria_id", catIds);
-    if (ciudad) query = query.eq("ciudad", ciudad);
+    if (ciudadId) query = query.eq("ciudad_id", ciudadId);
     if (fecha) query = query.eq("fecha_inicio", fecha);
     if (busqueda.trim()) query = query.ilike("titulo", `%${busqueda.trim()}%`);
 
@@ -109,7 +107,7 @@ function EventosContent() {
   };
 
   const handleBuscar = () => {
-    actualizarURL({ q: busqueda, categoria: categoriaSlug, ciudad, fecha });
+    actualizarURL({ q: busqueda, categoria: categoriaSlug, ciudad: ciudadId ? String(ciudadId) : "", fecha });
     buscar();
   };
 
@@ -159,9 +157,9 @@ function EventosContent() {
             </div>
             <div>
               <label style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", display: "block", marginBottom: 4 }}>Ciudad</label>
-              <select style={inp} value={ciudad} onChange={e => setCiudad(e.target.value)}>
+              <select style={inp} value={ciudadId} onChange={e => setCiudadId(e.target.value ? Number(e.target.value) : "")}>
                 <option value="">Todas</option>
-                {ciudades.map(c => <option key={c} value={c}>{c}</option>)}
+                {ciudades.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
             <div>
@@ -210,7 +208,7 @@ function EventosContent() {
                       {ev.titulo}
                     </div>
                     <div style={{ fontSize: 12, color: "#7a96aa" }}>
-                      {ev.ciudad}{ev.fecha_inicio ? ` · ${new Date(ev.fecha_inicio + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}` : ""}
+                      {(ev.ciudades as any)?.nombre ?? ""}{ev.fecha_inicio ? ` · ${new Date(ev.fecha_inicio + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}` : ""}
                     </div>
                     {ev.exposicion === "completa" && ev.costo_minimo !== null && (
                       <div style={{ fontSize: 13, color: "#1a9b8c", fontWeight: 600, marginTop: 6 }}>

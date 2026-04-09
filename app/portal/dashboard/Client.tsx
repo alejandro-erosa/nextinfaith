@@ -7,9 +7,9 @@ import { supabase } from "../../lib/supabase";
 type Evento = {
   id: number;
   titulo: string;
-  ciudad: string;
+  ciudades: { nombre: string } | null;
   fecha_inicio: string;
-  modalidad: string;
+  modalidades: { clave: string } | null;
   costo_minimo: number;
   estado_publicacion: string;
   exposicion: string;
@@ -74,7 +74,7 @@ export default function DashboardPage() {
     const { data, error } = await supabase
       .from("eventos")
       .select(`
-        id, titulo, ciudad, fecha_inicio, modalidad, costo_minimo,
+        id, titulo, ciudad_id, ciudades(nombre), fecha_inicio, modalidad_id, modalidades(clave), costo_minimo,
         estado_publicacion, exposicion,
         categorias ( nombre ),
         profiles!organizador_id ( nombre, apellido )
@@ -94,11 +94,12 @@ export default function DashboardPage() {
 
   const eventosFiltrados = eventos.filter((e) => {
     const texto = busqueda.toLowerCase();
+    const ciudadNombre = e.ciudades?.nombre ?? "";
     const okBusqueda = !busqueda ||
       e.titulo.toLowerCase().includes(texto) ||
-      e.ciudad.toLowerCase().includes(texto);
+      ciudadNombre.toLowerCase().includes(texto);
     const okCiudad = !filtroCiudad ||
-      e.ciudad.toLowerCase().includes(filtroCiudad.toLowerCase());
+      ciudadNombre.toLowerCase().includes(filtroCiudad.toLowerCase());
     const okEstado = !filtroEstado || e.estado_publicacion === filtroEstado;
     const okExpo = !filtroExpo || e.exposicion === filtroExpo;
     const okDesde = !fechaDesde || (e.fecha_inicio && e.fecha_inicio >= fechaDesde);
@@ -179,7 +180,7 @@ export default function DashboardPage() {
             <input style={{ ...inp, width: "100%" }} placeholder="Ciudad..."
               value={filtroCiudad} onChange={e => setFiltroCiudad(e.target.value)} list="ciudades-list" />
             <datalist id="ciudades-list">
-              {[...new Set(eventos.map(e => e.ciudad).filter(Boolean))].sort().map(c => (
+              {[...new Set(eventos.map(e => e.ciudades?.nombre).filter(Boolean))].sort().map(c => (
                 <option key={c} value={c} />
               ))}
             </datalist>
@@ -260,7 +261,7 @@ export default function DashboardPage() {
 
               <div style={{ ...cellStyle(0), fontWeight: 500 }} title={e.titulo}>{e.titulo}</div>
               <div style={cellStyle(1)}>{e.categoria?.nombre ?? "—"}</div>
-              <div style={cellStyle(2)}>{e.ciudad}</div>
+              <div style={cellStyle(2)}>{e.ciudades?.nombre ?? "—"}</div>
               <div style={cellStyle(3)}>{formatFecha(e.fecha_inicio)}</div>
               <div style={cellStyle(4)} title={e.organizador ? `${e.organizador.nombre} ${e.organizador.apellido}` : "—"}>
                 {e.organizador ? `${e.organizador.nombre} ${e.organizador.apellido}` : "—"}

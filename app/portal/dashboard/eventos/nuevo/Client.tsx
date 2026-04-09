@@ -7,6 +7,9 @@ import { useUser } from "../../../../context/UserContext";
 type Categoria = { id: number; nombre: string; parent_id: number | null; slug: string };
 type CategoriaGrupo = { id: number; nombre: string; subcategorias: Categoria[] };
 type Fecha = { fecha: string; hora_inicio: string; hora_fin: string };
+type CiudadOpt = { id: number; nombre: string; estado: string; paises: { nombre: string } | null };
+type ModalidadOpt = { id: number; clave: string; nombre: string };
+type EstadoPubOpt = { id: number; clave: string; nombre: string };
 
 const fechaVacia = (): Fecha => ({ fecha: "", hora_inicio: "", hora_fin: "" });
 
@@ -52,17 +55,19 @@ export default function NuevoEventoPage() {
   const [grupos, setGrupos] = useState<CategoriaGrupo[]>([]);
   const [slugMap, setSlugMap] = useState<Record<number, string>>({});
   const [nombreCatPadre, setNombreCatPadre] = useState("");
+  const [ciudadesOpts, setCiudadesOpts] = useState<CiudadOpt[]>([]);
+  const [modalidadesOpts, setModalidadesOpts] = useState<ModalidadOpt[]>([]);
+  const [estadosPubOpts, setEstadosPubOpts] = useState<EstadoPubOpt[]>([]);
 
   // Pestaña 1
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [categoriaId, setCategoriaId] = useState<number | "">("");
-  const [ciudad, setCiudad] = useState("");
-  const [estadoEvento, setEstadoEvento] = useState("");
-  const [pais, setPais] = useState("México");
+  const [ciudadId, setCiudadId] = useState<number | "">("");
+  const [ciudadOtro, setCiudadOtro] = useState("");
   const [venue, setVenue] = useState("");
   const [direccion, setDireccion] = useState("");
-  const [modalidad, setModalidad] = useState("presencial");
+  const [modalidadId, setModalidadId] = useState<number | "">("");
   const [costoMinimo, setCostoMinimo] = useState(0);
   const [urlEvento, setUrlEvento] = useState("");
   const [telefonoContacto, setTelefonoContacto] = useState("");
@@ -105,7 +110,18 @@ export default function NuevoEventoPage() {
   const [duracionDias, setDuracionDias] = useState("");
   const [precioPorPersona, setPrecioPorPersona] = useState(0);
 
-  useEffect(() => { cargarCategorias(); }, []);
+  useEffect(() => { cargarCategorias(); cargarLookups(); }, []);
+
+  const cargarLookups = async () => {
+    const [{ data: ciu }, { data: mod }, { data: est }] = await Promise.all([
+      supabase.from("ciudades").select("id, nombre, estado, paises(nombre)").order("nombre"),
+      supabase.from("modalidades").select("id, clave, nombre").order("nombre"),
+      supabase.from("estados_publicacion").select("id, clave, nombre").order("nombre"),
+    ]);
+    if (ciu) setCiudadesOpts(ciu as any);
+    if (mod) setModalidadesOpts(mod);
+    if (est) setEstadosPubOpts(est);
+  };
 
   const cargarCategorias = async () => {
     const { data } = await supabase.from("categorias").select("id, nombre, parent_id, slug").eq("activo", true).order("orden");
@@ -163,15 +179,21 @@ export default function NuevoEventoPage() {
   const guardarTab1 = async () => {
     if (!titulo.trim()) { setError("El título es obligatorio."); return; }
     if (!categoriaId) { setError("Selecciona una categoría."); return; }
-    if (!ciudad.trim()) { setError("La ciudad es obligatoria."); return; }
+    const ciudadEsOtra = ciudadesOpts.find(c => c.id === ciudadId)?.nombre === "Otra";
+    if (!ciudadId && !ciudadOtro.trim()) { setError("La ciudad es obligatoria."); return; }
+    if (ciudadEsOtra && !ciudadOtro.trim()) { setError("Escribe la ciudad en el campo de texto."); return; }
     setSaving(true); setError(""); setErrorImagen("");
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setError("Sesión expirada."); setSaving(false); return; }
 
+    const borradorId = estadosPubOpts.find(e => e.clave === "borrador")?.id ?? null;
     const campos = {
       titulo, descripcion, categoria_id: categoriaId,
-      ciudad, estado: estadoEvento, pais, venue, direccion, modalidad,
+      ciudad_id: ciudadId || null,
+      ciudad_otro: ciudadEsOtra ? (ciudadOtro || null) : null,
+      modalidad_id: modalidadId || null,
+      venue, direccion,
       costo_minimo: costoMinimo, url_evento: urlEvento || null,
       telefono_contacto: telefonoContacto || null,
       programa_descripcion: tienePrograma ? (programaDescripcion || null) : null,
@@ -187,7 +209,9 @@ export default function NuevoEventoPage() {
       }
     } else {
       const { data: ev, error: errEv } = await supabase.from("eventos").insert({
-        ...campos, organizador_id: user.id, creado_por: user.id, estado_publicacion: "borrador", exposicion: "basica",
+        ...campos, organizador_id: user.id, creado_por: user.id,
+        estado_publicacion: "borrador", estado_publicacion_id: borradorId,
+        exposicion: "basica",
       }).select().single();
       if (errEv || !ev) { setError("Error al guardar: " + (errEv?.message ?? "")); setSaving(false); return; }
       setEventoId(ev.id);
@@ -238,8 +262,9 @@ export default function NuevoEventoPage() {
   const enviarARevision = async () => {
     if (!eventoId) return;
     setSaving(true);
+    const enRevisionId = estadosPubOpts.find(e => e.clave === "en_revision")?.id ?? null;
     await supabase.from("eventos")
-      .update({ estado_publicacion: "en_revision" })
+      .update({ estado_publicacion: "en_revision", estado_publicacion_id: enRevisionId })
       .eq("id", eventoId);
     setEstadoPublicacion("en_revision");
     setSaving(false);
@@ -306,11 +331,30 @@ export default function NuevoEventoPage() {
 
           <div style={card}>
             <div style={cardT}>Ubicación</div>
-            <div style={{ ...g3, marginBottom: 12 }}>
-              <div><label style={lbl}>Ciudad *</label><input style={inp} value={ciudad} onChange={e => setCiudad(e.target.value)} placeholder="Ciudad" /></div>
-              <div><label style={lbl}>Estado</label><input style={inp} value={estadoEvento} onChange={e => setEstadoEvento(e.target.value)} placeholder="Estado" /></div>
-              <div><label style={lbl}>País</label><input style={inp} value={pais} onChange={e => setPais(e.target.value)} /></div>
+            <div style={{ ...g2, marginBottom: 12 }}>
+              <div>
+                <label style={lbl}>Ciudad *</label>
+                <select style={inp} value={ciudadId} onChange={e => setCiudadId(e.target.value ? Number(e.target.value) : "")}>
+                  <option value="">Selecciona una ciudad</option>
+                  {ciudadesOpts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              </div>
+              {ciudadesOpts.find(c => c.id === ciudadId)?.nombre === "Otra" && (
+                <div>
+                  <label style={lbl}>Especifica la ciudad</label>
+                  <input style={inp} value={ciudadOtro} onChange={e => setCiudadOtro(e.target.value)} placeholder="Escribe la ciudad" />
+                </div>
+              )}
             </div>
+            {ciudadId && ciudadesOpts.find(c => c.id === ciudadId) && (
+              <div style={{ fontSize: 11, color: "#7a9ab0", marginBottom: 12 }}>
+                {(() => {
+                  const c = ciudadesOpts.find(x => x.id === ciudadId);
+                  const parts = [c?.estado, (c?.paises as any)?.nombre].filter(Boolean);
+                  return parts.length > 0 ? `Estado / País: ${parts.join(" · ")}` : null;
+                })()}
+              </div>
+            )}
             <div style={g2}>
               <div><label style={lbl}>Venue / Sede</label><input style={inp} value={venue} onChange={e => setVenue(e.target.value)} placeholder="Nombre del lugar" /></div>
               <div><label style={lbl}>Dirección</label><input style={inp} value={direccion} onChange={e => setDireccion(e.target.value)} placeholder="Dirección completa" /></div>
@@ -322,10 +366,9 @@ export default function NuevoEventoPage() {
             <div style={{ ...g3, marginBottom: 12 }}>
               <div>
                 <label style={lbl}>Modalidad</label>
-                <select style={inp} value={modalidad} onChange={e => setModalidad(e.target.value)}>
-                  <option value="presencial">Presencial</option>
-                  <option value="online">Online</option>
-                  <option value="hibrido">Híbrido</option>
+                <select style={inp} value={modalidadId} onChange={e => setModalidadId(e.target.value ? Number(e.target.value) : "")}>
+                  <option value="">Selecciona...</option>
+                  {modalidadesOpts.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
                 </select>
               </div>
               <div><label style={lbl}>Costo mínimo (MXN)</label><input style={inp} type="number" min={0} value={costoMinimo} onChange={e => setCostoMinimo(Number(e.target.value))} /></div>
@@ -528,9 +571,6 @@ export default function NuevoEventoPage() {
       {/* PESTAÑA 4 */}
       {tabActual === 3 && (
         <>
-        <div style={{ fontSize: 11, color: "red" }}>
-          eventoId: {eventoId ?? "null"} | estado: {estadoPublicacion}
-        </div>
         <div style={card}>
           <div style={cardT}>Corresponsales</div>
             <div style={{ fontSize: 13, color: "#4a6278", textAlign: "center", padding: 24 }}>

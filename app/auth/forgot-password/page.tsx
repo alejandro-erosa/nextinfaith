@@ -22,7 +22,12 @@ export default function ForgotPasswordPage() {
     });
 
     if (err) {
-      setError("Ocurrió un error. Verifica el correo e intenta de nuevo.");
+      const msg = err.message?.toLowerCase() ?? "";
+      if (msg.includes("rate") || msg.includes("limit") || msg.includes("security") || msg.includes("too many")) {
+        setError("Ya enviamos un enlace recientemente. Espera unos minutos antes de solicitar otro.");
+      } else {
+        setError("Ocurrió un error. Verifica el correo e intenta de nuevo.");
+      }
       setLoading(false);
       return;
     }

@@ -8,9 +8,7 @@ type Evento = {
   titulo: string;
   descripcion: string | null;
   url_imagen: string | null;
-  ciudad: string | null;
-  estado: string | null;
-  pais: string | null;
+  ciudades: { nombre: string; estado: string; paises: { nombre: string } | null } | null;
   direccion: string | null;
   venue: string | null;
   fecha_inicio: string | null;
@@ -18,7 +16,7 @@ type Evento = {
   costo_minimo: number | null;
   url_evento: string | null;
   telefono_contacto: string | null;
-  modalidad: string | null;
+  modalidades: { clave: string } | null;
   exposicion: string;
   categorias: { nombre: string } | null;
 };
@@ -67,7 +65,7 @@ export default function DetalleEventoPublico() {
     setLoading(true);
     const { data: ev } = await supabase
       .from("eventos")
-      .select("id, titulo, descripcion, url_imagen, ciudad, estado, pais, direccion, venue, fecha_inicio, fecha_fin, costo_minimo, url_evento, telefono_contacto, modalidad, exposicion, categorias(nombre)")
+      .select("id, titulo, descripcion, url_imagen, ciudad_id, ciudades(nombre, estado, paises(nombre)), direccion, venue, fecha_inicio, fecha_fin, costo_minimo, url_evento, telefono_contacto, modalidad_id, modalidades(clave), exposicion, categorias(nombre)")
       .eq("id", Number(id))
       .eq("estado_publicacion", "publicado")
       .single();
@@ -201,13 +199,13 @@ export default function DetalleEventoPublico() {
             <div>
               <div style={{ fontSize: 11, color: "#7a96aa", marginBottom: 2 }}>CIUDAD</div>
               <div style={{ fontSize: 14, color: "#1a2b3c", fontWeight: 500 }}>
-                {evento.ciudad}{evento.estado ? `, ${evento.estado}` : ""}
+                {(evento.ciudades as any)?.nombre ?? "—"}{(evento.ciudades as any)?.estado ? `, ${(evento.ciudades as any).estado}` : ""}
               </div>
             </div>
             <div>
               <div style={{ fontSize: 11, color: "#7a96aa", marginBottom: 2 }}>MODALIDAD</div>
               <div style={{ fontSize: 14, color: "#1a2b3c", fontWeight: 500, textTransform: "capitalize" }}>
-                {evento.modalidad ?? "—"}
+                {(evento.modalidades as any)?.clave ?? "—"}
               </div>
             </div>
             {evento.telefono_contacto && (

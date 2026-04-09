@@ -7,6 +7,9 @@ import { useUser } from "../../../../../context/UserContext";
 type Categoria = { id: number; nombre: string; parent_id: number | null; slug: string };
 type CategoriaGrupo = { id: number; nombre: string; subcategorias: Categoria[] };
 type Fecha = { id?: number; fecha: string; hora_inicio: string; hora_fin: string; };
+type CiudadOpt = { id: number; nombre: string; estado: string; paises: { nombre: string } | null };
+type ModalidadOpt = { id: number; clave: string; nombre: string };
+type EstadoPubOpt = { id: number; clave: string; nombre: string };
 
 const fechaVacia = (): Fecha => ({ fecha: "", hora_inicio: "", hora_fin: "" });
 
@@ -46,6 +49,9 @@ export default function EditarEventoPage() {
   const [grupos, setGrupos] = useState<CategoriaGrupo[]>([]);
   const [slugMap, setSlugMap] = useState<Record<number, string>>({});
   const [nombreCatPadre, setNombreCatPadre] = useState("");
+  const [ciudadesOpts, setCiudadesOpts] = useState<CiudadOpt[]>([]);
+  const [modalidadesOpts, setModalidadesOpts] = useState<ModalidadOpt[]>([]);
+  const [estadosPubOpts, setEstadosPubOpts] = useState<EstadoPubOpt[]>([]);
 
   //Estatus del evento
   const [estadoPublicacion, setEstadoPublicacion] = useState("borrador");
@@ -54,12 +60,11 @@ export default function EditarEventoPage() {
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [categoriaId, setCategoriaId] = useState<number | "">("");
-  const [ciudad, setCiudad] = useState("");
-  const [estadoEvento, setEstadoEvento] = useState("");
-  const [pais, setPais] = useState("México");
+  const [ciudadId, setCiudadId] = useState<number | "">("");
+  const [ciudadOtro, setCiudadOtro] = useState("");
   const [venue, setVenue] = useState("");
   const [direccion, setDireccion] = useState("");
-  const [modalidad, setModalidad] = useState("presencial");
+  const [modalidadId, setModalidadId] = useState<number | "">("");
   const [costoMinimo, setCostoMinimo] = useState(0);
   const [urlEvento, setUrlEvento] = useState("");
   const [imagenFile, setImagenFile] = useState<File | null>(null);
@@ -105,7 +110,19 @@ export default function EditarEventoPage() {
   useEffect(() => {
     cargarCategorias();
     cargarEvento();
+    cargarLookups();
   }, []);
+
+  const cargarLookups = async () => {
+    const [{ data: ciu }, { data: mod }, { data: est }] = await Promise.all([
+      supabase.from("ciudades").select("id, nombre, estado, paises(nombre)").order("nombre"),
+      supabase.from("modalidades").select("id, clave, nombre").order("nombre"),
+      supabase.from("estados_publicacion").select("id, clave, nombre").order("nombre"),
+    ]);
+    if (ciu) setCiudadesOpts(ciu as any);
+    if (mod) setModalidadesOpts(mod);
+    if (est) setEstadosPubOpts(est);
+  };
 
   const cargarCategorias = async () => {
     const { data } = await supabase
@@ -129,7 +146,7 @@ export default function EditarEventoPage() {
     setLoading(true);
     const { data: ev } = await supabase
       .from("eventos")
-      .select("*")
+      .select("*, estados_publicacion(clave)")
       .eq("id", id)
       .single();
 
@@ -139,19 +156,18 @@ export default function EditarEventoPage() {
     setTitulo(ev.titulo ?? "");
     setDescripcion(ev.descripcion ?? "");
     setCategoriaId(ev.categoria_id ?? "");
-    setCiudad(ev.ciudad ?? "");
-    setEstadoEvento(ev.estado ?? "");
-    setPais(ev.pais ?? "México");
+    setCiudadId(ev.ciudad_id ?? "");
+    setCiudadOtro(ev.ciudad_otro ?? "");
     setVenue(ev.venue ?? "");
     setDireccion(ev.direccion ?? "");
-    setModalidad(ev.modalidad ?? "presencial");
+    setModalidadId(ev.modalidad_id ?? "");
     setCostoMinimo(ev.costo_minimo ?? 0);
     setUrlEvento(ev.url_evento ?? "");
     setImagenActual(ev.url_imagen ?? "");
     setTienePrograma(ev.tiene_programa ?? false);
     setTieneLocalidades(ev.tiene_localidades ?? false);
     setTelefonoContacto(ev.telefono_contacto ?? "");
-    setEstadoPublicacion(ev.estado_publicacion ?? "borrador");
+    setEstadoPublicacion((ev.estados_publicacion as any)?.clave ?? ev.estado_publicacion ?? "borrador");
     setProgramaDescripcion(ev.programa_descripcion ?? "");
 
     // Nombre categoría padre
@@ -273,8 +289,9 @@ export default function EditarEventoPage() {
   // GUARDAR PESTAÑA 1
   const enviarARevision = async () => {
     setSaving(true);
+    const enRevisionId = estadosPubOpts.find(e => e.clave === "en_revision")?.id ?? null;
     await supabase.from("eventos")
-      .update({ estado_publicacion: "en_revision" })
+      .update({ estado_publicacion: "en_revision", estado_publicacion_id: enRevisionId })
       .eq("id", id);
     setEstadoPublicacion("en_revision");
     setSaving(false);
@@ -282,12 +299,17 @@ export default function EditarEventoPage() {
   const guardarTab1 = async () => {
     if (!titulo.trim()) { setError("El título es obligatorio."); return; }
     if (!categoriaId) { setError("Selecciona una categoría."); return; }
-    if (!ciudad.trim()) { setError("La ciudad es obligatoria."); return; }
+    const ciudadEsOtra = ciudadesOpts.find(c => c.id === ciudadId)?.nombre === "Otra";
+    if (!ciudadId && !ciudadOtro.trim()) { setError("La ciudad es obligatoria."); return; }
+    if (ciudadEsOtra && !ciudadOtro.trim()) { setError("Escribe la ciudad en el campo de texto."); return; }
     setSaving(true); setError(""); setErrorImagen("");
 
     await supabase.from("eventos").update({
       titulo, descripcion, categoria_id: categoriaId,
-      ciudad, estado: estadoEvento, pais, venue, direccion, modalidad,
+      ciudad_id: ciudadId || null,
+      ciudad_otro: ciudadEsOtra ? (ciudadOtro || null) : null,
+      modalidad_id: modalidadId || null,
+      venue, direccion,
       costo_minimo: costoMinimo, url_evento: urlEvento || null,
       tiene_programa: tienePrograma, tiene_localidades: tieneLocalidades,
       telefono_contacto: telefonoContacto || null,
@@ -512,11 +534,30 @@ export default function EditarEventoPage() {
 
           <div style={card}>
             <div style={cardT}>Ubicación</div>
-            <div style={{ ...g3, marginBottom: 12 }}>
-              <div><label style={lbl}>Ciudad *</label><input style={inp} value={ciudad} onChange={e => setCiudad(e.target.value)} /></div>
-              <div><label style={lbl}>Estado</label><input style={inp} value={estadoEvento} onChange={e => setEstadoEvento(e.target.value)} /></div>
-              <div><label style={lbl}>País</label><input style={inp} value={pais} onChange={e => setPais(e.target.value)} /></div>
+            <div style={{ ...g2, marginBottom: 12 }}>
+              <div>
+                <label style={lbl}>Ciudad *</label>
+                <select style={inp} value={ciudadId} onChange={e => setCiudadId(e.target.value ? Number(e.target.value) : "")}>
+                  <option value="">Selecciona una ciudad</option>
+                  {ciudadesOpts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              </div>
+              {ciudadesOpts.find(c => c.id === ciudadId)?.nombre === "Otra" && (
+                <div>
+                  <label style={lbl}>Especifica la ciudad</label>
+                  <input style={inp} value={ciudadOtro} onChange={e => setCiudadOtro(e.target.value)} placeholder="Escribe la ciudad" />
+                </div>
+              )}
             </div>
+            {ciudadId && ciudadesOpts.find(c => c.id === ciudadId) && (
+              <div style={{ fontSize: 11, color: "#7a9ab0", marginBottom: 12 }}>
+                {(() => {
+                  const c = ciudadesOpts.find(x => x.id === ciudadId);
+                  const parts = [c?.estado, (c?.paises as any)?.nombre].filter(Boolean);
+                  return parts.length > 0 ? `Estado / País: ${parts.join(" · ")}` : null;
+                })()}
+              </div>
+            )}
             <div style={g2}>
               <div><label style={lbl}>Venue / Sede</label><input style={inp} value={venue} onChange={e => setVenue(e.target.value)} /></div>
               <div><label style={lbl}>Dirección</label><input style={inp} value={direccion} onChange={e => setDireccion(e.target.value)} /></div>
@@ -528,10 +569,9 @@ export default function EditarEventoPage() {
             <div style={g3}>
               <div>
                 <label style={lbl}>Modalidad</label>
-                <select style={inp} value={modalidad} onChange={e => setModalidad(e.target.value)}>
-                  <option value="presencial">Presencial</option>
-                  <option value="online">Online</option>
-                  <option value="hibrido">Híbrido</option>
+                <select style={inp} value={modalidadId} onChange={e => setModalidadId(e.target.value ? Number(e.target.value) : "")}>
+                  <option value="">Selecciona...</option>
+                  {modalidadesOpts.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
                 </select>
               </div>
               <div><label style={lbl}>Costo mínimo (MXN)</label><input style={inp} type="number" min={0} value={costoMinimo} onChange={e => setCostoMinimo(Number(e.target.value))} /></div>
