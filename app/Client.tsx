@@ -151,41 +151,13 @@ export default function Home() {
   return (
     <main style={{ minHeight: "100vh", background: "#fff", fontFamily: "'Nunito', sans-serif" }}>
 
-      {/* NAVBAR */}
-      <nav style={{
-        position: "fixed", top: 0, width: "100%", zIndex: 50,
-        background: "linear-gradient(90deg, #1a3a6b 0%, #1a6b8c 100%)",
-        boxShadow: "0 2px 12px rgba(0,0,0,0.15)"
-      }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <img src="/logo_transparente.png" alt="Next In Faith" style={{ width: 44, height: 44 }} />
-            <span style={{ fontWeight: 700, fontSize: 16, color: "#fff" }}>Next In Faith</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            {usuarioNombre ? (
-              <>
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>Hola, {usuarioNombre}</span>
-                <button onClick={handleLogout} style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", background: "none", border: "none", cursor: "pointer" }}>
-                  Salir
-                </button>
-              </>
-            ) : (
-              <>
-                <a href="/login" style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", textDecoration: "none", fontWeight: 600 }}>Iniciar sesión</a>
-                <a href="/registro" style={{ fontSize: 13, background: "#e8a020", color: "#fff", padding: "7px 18px", borderRadius: 99, textDecoration: "none", fontWeight: 700 }}>Regístrate</a>
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
-
+      
       {/* HERO */}
       <section style={{
         position: "relative", minHeight: "100vh", overflow: "hidden",
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
-        paddingTop: 64,
+        paddingTop: 0,
       }}>
         <video
           autoPlay muted loop playsInline

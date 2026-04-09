@@ -1,0 +1,10 @@
+En la pantalla de Login -- no existe olvide mi contraseña y un proceso para eso
+cambiar el Logo de NIF
+No hay como regresar al home page, visible, si doy click en el logo de NIF se puede pero hay pantallas como las de login que no existe ese logo, además si además del logo hubiera un link que diga home o inicio es lo que se requiere en todas las paginas, pero además una vez que estas en la pantalla home si ya te logeaste, no hay manera de ir a tu dashboard porque no existe el link.
+Cuando se captura un Evento es mejor tener ya todas las ciudades del pais dentro de un listbox porque la gente escribe sin un estándar y hasta confaltas de ortografíaCiudades no salen opciones para que sea siempre la misma ciudades al menos CDMX, Guadalajara, Monterrey, Puebla, Querétaro, León y Mérida
+Busqueda por del evento, ya sea la pantalla de inicio o ya dentro de un resultado es necesario verificar si se puede tener incluir la modalidad( en linea, presencial o hibrido) si hay que cambiar la base de datos dejarlo como pendiente
+Cuando Se sube la imagen de un evento es importante presentar un recuadro donde vea el usuario si su imagen quedará bien a esa escala que se presenta y además poder mover esa imagen en el frame (nice tohave no un must)
+Un evento puede pertenecer a más de una categoría y a más de una subcategoría, REvisar que implica realizar este cambio,
+Es necesario contemplar que en un futuro cualquier usuario dado de alta podrá dar de alta un evento y que será necesario su aprobación por un admin pero la alta debe de poder realizarse.
+Cuando se da de alta un evento que tiene varias fechas, y no son varios eventos, es necesario tener en cuenta que las fechas de inicio son varias y van asociadas a una fecha de fin. Por lo que si tengo un evento que es un congreso que inicia el viernes ya acaba 15 día despues pero solo los fines de semana, tengo fecha de inició viernes X, fecha de fin del primer fin de semana Domingo Y, pero reinicia el viernes Z y acaba domingo W, por lo que esos eventos de varias fechas deben de tener una fecha de fin por cada fecha de inicio.
+
