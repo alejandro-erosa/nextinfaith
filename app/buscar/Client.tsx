@@ -167,12 +167,14 @@ function EventosContent() {
               <label style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", display: "block", marginBottom: 4 }}>Fecha</label>
               <input style={inp} type="date" value={fecha} onChange={e => setFecha(e.target.value)} />
             </div>
-            <button onClick={handleBuscar} style={{
-              background: "#e8a020", color: "#fff", border: "none", borderRadius: 10,
-              padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap"
-            }}>
-              Buscar →
-            </button>
+            <div style={{ display: "flex", alignItems: "flex-end" }}>
+              <button onClick={handleBuscar} style={{
+                background: "#e8a020", color: "#fff", border: "none", borderRadius: 10,
+                padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap"
+              }}>
+                Buscar →
+              </button>
+            </div>
           </div>
         </div>
       </div>

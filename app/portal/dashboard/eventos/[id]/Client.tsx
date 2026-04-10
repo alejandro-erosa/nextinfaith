@@ -34,8 +34,8 @@ type Evento = {
   profiles: { nombre: string; apellido: string } | null;
   revisado: { nombre: string; apellido: string } | null;
   ciudades: { nombre: string; estado: string } | null;
-  modalidades: { nombre: string; clave: string } | null;
-  estados_publicacion: { id: number; clave: string; nombre: string } | null;
+  modalidades: { clave: string } | null;
+  estados_publicacion: { id: number; clave: string; descripcion: string } | null;
 };
 
 type Fecha = { id: number; fecha: string; hora_inicio: string; hora_fin: string };
@@ -117,13 +117,13 @@ export default function EventoDetallePage() {
   const [savingDecision, setSavingDecision] = useState(false);
   const [decisionEstado, setDecisionEstado] = useState("");
   const [decisionExposicion, setDecisionExposicion] = useState("");
-  const [estadosPublicacionOpts, setEstadosPublicacionOpts] = useState<{ id: number; clave: string; nombre: string }[]>([]);
+  const [estadosPublicacionOpts, setEstadosPublicacionOpts] = useState<{ id: number; clave: string; descripcion: string }[]>([]);
 
   const cargarEvento = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase
       .from("eventos")
-      .select(`*, categorias(id,nombre), profiles!organizador_id(nombre,apellido), revisado:profiles!revisado_por(nombre,apellido), ciudades(nombre,estado), modalidades(nombre,clave), estados_publicacion(id,clave,nombre)`)
+      .select(`*, categorias(id,nombre), profiles!organizador_id(nombre,apellido), revisado:profiles!revisado_por(nombre,apellido), ciudades(nombre,estado), modalidades(clave), estados_publicacion(id,clave,descripcion)`)
       .eq("id", id)
       .single();
     if (data) setEvento(data);
@@ -146,7 +146,7 @@ export default function EventoDetallePage() {
 
   useEffect(() => {
     if (id) cargarEvento();
-    supabase.from("estados_publicacion").select("id, clave, nombre").order("nombre").then(({ data }) => {
+    supabase.from("estados_publicacion").select("id, clave, descripcion").order("orden").then(({ data }) => {
       if (data) setEstadosPublicacionOpts(data);
     });
   }, [id, cargarEvento]);
@@ -306,7 +306,7 @@ export default function EventoDetallePage() {
                 <div style={{ fontSize: 11, color: "#7a9ab0", marginBottom: 8 }}>Estado de publicación</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {(estadosPublicacionOpts.length > 0
-                    ? estadosPublicacionOpts.map(e => ({ value: e.clave, label: e.nombre }))
+                    ? estadosPublicacionOpts.map(e => ({ value: e.clave, label: e.descripcion }))
                     : ESTADOS_OPCIONES_DEFAULT
                   ).map(op => (
                     <div key={op.value} style={radioStyle(decisionEstado === op.value)} onClick={() => setDecisionEstado(op.value)}>
