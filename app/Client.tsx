@@ -141,10 +141,12 @@ export default function Home() {
         alignItems: "center", justifyContent: "center",
         paddingTop: 0,
       }}>
-        <video
-          autoPlay muted loop playsInline
-          src="https://sxeqazzypifkokvjenyg.supabase.co/storage/v1/object/public/media/Estadio_niebla_intermitente.mp4"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }}
+        <Image
+          src="/background.jpg"
+          alt="Estadio"
+          fill
+          priority
+          style={{ objectFit: "cover", zIndex: 0 }}
         />
         <div style={{ position: "absolute", inset: 0, background: "rgba(20, 40, 80, 0.55)", zIndex: 1 }} />
 
