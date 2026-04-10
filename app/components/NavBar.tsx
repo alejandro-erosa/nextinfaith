@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { authGetUser, authSignOut } from "../context/UserContext";
 
 export default function NavBar() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function NavBar() {
   }, []);
 
   const verificarSesion = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await authGetUser();
     if (!user) return;
     const { data: perfil } = await supabase
       .from("profiles")
@@ -31,7 +32,7 @@ export default function NavBar() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await authSignOut();
     setUsuarioNombre(null);
     setRolId(null);
     router.push("/");

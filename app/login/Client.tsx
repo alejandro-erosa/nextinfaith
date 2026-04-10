@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "../lib/supabase";
+import { authSignIn } from "../context/UserContext";
 
   export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -24,7 +25,7 @@ import { supabase } from "../lib/supabase";
     if (!password) { setError("La contraseña es obligatoria."); return; }
     setLoading(true); setError("");
 
-    const { data, error: errLogin } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: errLogin } = await authSignIn(email, password);
     if (errLogin || !data.user) {
       setError("Correo o contraseña incorrectos.");
       setLoading(false); return;

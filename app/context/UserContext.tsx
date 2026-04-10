@@ -3,6 +3,32 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
+// ── Standalone auth helpers (usable outside UserProvider) ─────────────────
+// Single place with all supabase.auth calls — swap here if auth provider changes.
+
+export const authSignIn = (email: string, password: string) =>
+  supabase.auth.signInWithPassword({ email, password });
+
+export const authSignUp = (params: {
+  email: string;
+  password: string;
+  options?: { data?: Record<string, unknown> };
+}) => supabase.auth.signUp(params);
+
+export const authSignOut = () => supabase.auth.signOut();
+
+export const authGetUser = () => supabase.auth.getUser();
+
+export const authUpdatePassword = (password: string) =>
+  supabase.auth.updateUser({ password });
+
+export const authOnAuthStateChange = (
+  // Accept both sync and async callbacks — Supabase's type requires Promise<void> but sync works at runtime
+  callback: (...args: Parameters<Parameters<typeof supabase.auth.onAuthStateChange>[0]>) => void | Promise<void>
+) => supabase.auth.onAuthStateChange(callback as Parameters<typeof supabase.auth.onAuthStateChange>[0]);
+
+// ── Context ───────────────────────────────────────────────────────────────
+
 type UserContextType = {
   userId: string;
   userEmail: string;
@@ -11,6 +37,7 @@ type UserContextType = {
   userRol: string;
   requiereAprobacion: boolean;
   loading: boolean;
+  signOut: () => Promise<void>;
 };
 
 const UserContext = createContext<UserContextType>({
@@ -21,6 +48,7 @@ const UserContext = createContext<UserContextType>({
   userRol: "",
   requiereAprobacion: true,
   loading: true,
+  signOut: async () => {},
 });
 
 export const useUser = () => useContext(UserContext);
@@ -72,8 +100,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { inicializar(); }, [inicializar]);
 
+  const signOut = useCallback(async () => {
+    await authSignOut();
+  }, []);
+
   return (
-    <UserContext.Provider value={{ userId, userEmail, userNombre, userInitials, userRol, requiereAprobacion, loading }}>
+    <UserContext.Provider value={{ userId, userEmail, userNombre, userInitials, userRol, requiereAprobacion, loading, signOut }}>
       {children}
     </UserContext.Provider>
   );

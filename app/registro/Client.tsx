@@ -3,6 +3,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
+import { authSignUp } from "../context/UserContext";
 
 export default function RegistroPage() {
   const router = useRouter();
@@ -25,10 +26,7 @@ export default function RegistroPage() {
 
     setSaving(true); setError("");
 
-    const { data, error: errAuth } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-    });
+    const { data, error: errAuth } = await authSignUp({ email: email.trim(), password });
 
     if (errAuth || !data.user) {
       setError(errAuth?.message ?? "Error al crear la cuenta.");

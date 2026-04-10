@@ -22,7 +22,7 @@ const ROL_LABEL: Record<string, string> = {
 function DashboardSidebar() {
   const router   = useRouter();
   const pathname = usePathname();
-  const { userEmail, userNombre, userRol, loading } = useUser();
+  const { userEmail, userNombre, userRol, loading, signOut } = useUser();
 
   const [navGroups, setNavGroups]     = useState<NavGroup[]>([]);
   const [navLoading, setNavLoading]   = useState(true);
@@ -81,7 +81,7 @@ function DashboardSidebar() {
   }, [userRol, cargarNav]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     router.push("/portal");
   };
 

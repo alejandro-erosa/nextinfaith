@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../../lib/supabase";
+import { useUser } from "../../../../context/UserContext";
 
 type Categoria = { id: number; nombre: string; parent_id: number | null; slug: string };
 type CategoriaGrupo = { id: number; nombre: string; subcategorias: Categoria[] };
@@ -41,6 +42,7 @@ const PERIODICIDAD_OPCIONES = [
 
 export default function NuevoEventoPage() {
   const router = useRouter();
+  const { userId } = useUser();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [estadoPublicacion, setEstadoPublicacion] = useState("borrador");
@@ -181,8 +183,7 @@ export default function NuevoEventoPage() {
     if (ciudadEsOtra && !ciudadOtro.trim()) { setError("Escribe la ciudad en el campo de texto."); return; }
     setSaving(true); setError(""); setErrorImagen("");
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setError("Sesión expirada."); setSaving(false); return; }
+    if (!userId) { setError("Sesión expirada."); setSaving(false); return; }
 
     const borradorId = estadosPubOpts.find(e => e.clave === "borrador")?.id ?? null;
     const campos = {
@@ -206,7 +207,7 @@ export default function NuevoEventoPage() {
       }
     } else {
       const { data: ev, error: errEv } = await supabase.from("eventos").insert({
-        ...campos, organizador_id: user.id, creado_por: user.id,
+        ...campos, organizador_id: userId, creado_por: userId,
         estado_publicacion: "borrador", estado_publicacion_id: borradorId,
         exposicion: "basica",
       }).select().single();

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import { authOnAuthStateChange } from "../../context/UserContext";
 
 type Evento = {
   id: number;
@@ -84,7 +85,7 @@ export default function DetalleEventoPublico() {
   useEffect(() => {
     cargarEvento();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = authOnAuthStateChange((_event, session) => {
       setUsuario(session?.user ?? null);
     });
 

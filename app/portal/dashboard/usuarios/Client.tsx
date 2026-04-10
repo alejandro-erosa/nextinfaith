@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { useUser } from '../../../context/UserContext'
+import { useUser, authSignUp } from '../../../context/UserContext'
 
 interface Usuario {
   id: string
@@ -119,7 +119,7 @@ export default function UsuariosPage() {
     try {
       // Crear usuario en Supabase Auth via Admin API no disponible en cliente
       // Se usa signUp — el usuario recibirá correo de confirmación
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { data: authData, error: authError } = await authSignUp({
         email: nuevoEmail,
         password: Math.random().toString(36).slice(-10) + 'A1!',
         options: {

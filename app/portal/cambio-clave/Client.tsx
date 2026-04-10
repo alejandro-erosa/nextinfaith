@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "../../lib/supabase";
+import { authGetUser, authSignIn, authUpdatePassword } from "../../context/UserContext";
 
 export default function CambioClavePage() {
   const router = useRouter();
@@ -28,14 +29,11 @@ export default function CambioClavePage() {
     setError("");
 
     // 1. Verificar sesión activa
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await authGetUser();
     if (!user) { router.push("/portal"); return; }
 
     // 2. Re-autenticar con clave actual para verificarla
-    const { error: errLogin } = await supabase.auth.signInWithPassword({
-      email: user.email!,
-      password: claveActual,
-    });
+    const { error: errLogin } = await authSignIn(user.email!, claveActual);
 
     if (errLogin) {
       setError("La clave actual es incorrecta.");
@@ -44,9 +42,7 @@ export default function CambioClavePage() {
     }
 
     // 3. Actualizar clave
-    const { error: errUpdate } = await supabase.auth.updateUser({
-      password: claveNueva,
-    });
+    const { error: errUpdate } = await authUpdatePassword(claveNueva);
 
     if (errUpdate) {
       setError("Error al actualizar la clave. Intenta de nuevo.");
