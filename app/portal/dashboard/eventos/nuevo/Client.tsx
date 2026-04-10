@@ -8,8 +8,8 @@ type Categoria = { id: number; nombre: string; parent_id: number | null; slug: s
 type CategoriaGrupo = { id: number; nombre: string; subcategorias: Categoria[] };
 type Fecha = { fecha: string; hora_inicio: string; hora_fin: string };
 type CiudadOpt = { id: number; nombre: string; estado: string; paises: { nombre: string } | null };
-type ModalidadOpt = { id: number; clave: string; nombre: string };
-type EstadoPubOpt = { id: number; clave: string; nombre: string };
+type ModalidadOpt = { id: number; clave: string; descripcion: string };
+type EstadoPubOpt = { id: number; clave: string; descripcion: string };
 
 const fechaVacia = (): Fecha => ({ fecha: "", hora_inicio: "", hora_fin: "" });
 
@@ -112,8 +112,8 @@ export default function NuevoEventoPage() {
   const cargarLookups = async () => {
     const [{ data: ciu }, { data: mod }, { data: est }] = await Promise.all([
       supabase.from("ciudades").select("id, nombre, estado, paises(nombre)").order("nombre"),
-      supabase.from("modalidades").select("id, clave, nombre").order("nombre"),
-      supabase.from("estados_publicacion").select("id, clave, nombre").order("nombre"),
+      supabase.from("modalidades").select("id, clave, descripcion").order("orden"),
+      supabase.from("estados_publicacion").select("id, clave, descripcion").order("orden"),
     ]);
     if (ciu) setCiudadesOpts(ciu as any);
     if (mod) setModalidadesOpts(mod);
@@ -365,7 +365,7 @@ export default function NuevoEventoPage() {
                 <label style={lbl}>Modalidad</label>
                 <select style={inp} value={modalidadId} onChange={e => setModalidadId(e.target.value ? Number(e.target.value) : "")}>
                   <option value="">Selecciona...</option>
-                  {modalidadesOpts.map(m => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+                  {modalidadesOpts.map(m => <option key={m.id} value={m.id}>{m.descripcion}</option>)}
                 </select>
               </div>
               <div><label style={lbl}>Costo mínimo (MXN)</label><input style={inp} type="number" min={0} value={costoMinimo} onChange={e => setCostoMinimo(Number(e.target.value))} /></div>
